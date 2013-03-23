@@ -23,14 +23,17 @@ static gboolean
 x_event_prepare(GSource *source, gint *timeout)
 {
     XEventSource *x_event_source = (XEventSource *)source;
-
+    gboolean ready;
+    
     if (XEventsQueued(x_event_source->display, QueuedAlready)) {
         *timeout = 0;
-        return TRUE;
+        ready = TRUE;
     } else {
         *timeout = -1;
-        return FALSE;
+        ready = FALSE;
     }
+    XFlush(x_event_source->display);
+    return ready;
 }
 
 static gboolean

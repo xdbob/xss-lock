@@ -1,8 +1,8 @@
 #ifndef X_EVENT_SOURCE_H
 #define X_EVENT_SOURCE_H
 
-#include <xcb/xcb.h>
 #include <glib.h>
+#include <xcb/xcb.h>
 
 G_BEGIN_DECLS
 

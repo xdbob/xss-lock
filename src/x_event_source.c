@@ -3,12 +3,13 @@
 // TODO:
 // - dispatch/callback return value
 // - handle xcb errors?
-// - for glib-2.36: use new unixfd
 
 typedef struct XEventSource {
     GSource source;
     xcb_connection_t *connection;
+#if !GLIB_CHECK_VERSION(2, 36, 0)
     GPollFD poll_fd;
+#endif
     GQueue *queue;
 } XEventSource;
 
@@ -92,13 +93,18 @@ x_event_source_new(xcb_connection_t *connection)
 {
     GSource *source = g_source_new(&x_event_funcs, sizeof(XEventSource));
     XEventSource *x_event_source = (XEventSource *)source;
+    gint xcb_fd = xcb_get_file_descriptor(connection);
+    GIOCondition fd_event_mask = G_IO_IN | G_IO_HUP | G_IO_ERR;
 
     x_event_source->connection = connection;
     x_event_source->queue = g_queue_new();
-    x_event_source->poll_fd = {xcb_get_file_descriptor(connection),
-                               G_IO_IN | G_IO_HUP | G_IO_ERR,
-                               0};
+
+#if GLIB_CHECK_VERSION(2, 36, 0)
+    g_source_add_unix_fd(source, xcb_fd, fd_event_mask);
+#else
+    x_event_source->poll_fd = {xcb_fd, fd_event_mask, 0};
     g_source_add_poll(source, x_event_source->poll_fd);
+#endif
     
     return source;
 }

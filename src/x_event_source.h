@@ -1,12 +1,17 @@
-#ifndef X_EVENT_H  // more underscores?
-#define X_EVENT_H
+#ifndef X_EVENT_SOURCE_H
+#define X_EVENT_SOURCE_H
+
+#include <xcb/xcb.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 
-GSource *x_event_source_new(Display *display);
+typedef gboolean (*XEventFunc)(xcb_generic_event_t *event, gpointer user_data);
 
-guint x_event_add(Display *display, GSourceFunc function, gpointer data);
+GSource *x_event_source_new(xcb_connection_t *connection);
+
+guint x_event_add(xcb_connection_t *connection, XEventFunc function, gpointer data);
 
 G_END_DECLS
 
-#endif /* X_EVENT_H */
+#endif /* X_EVENT_SOURCE_H */

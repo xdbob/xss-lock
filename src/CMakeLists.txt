@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 project(xlocklaunch C)
 set(VERSION 0.1.0)
 
-configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
+configure_file("${PROJECT_SOURCE_DIR}/config.h.in"
+    "${PROJECT_BINARY_DIR}/config.h")
 include_directories("${PROJECT_BINARY_DIR}")
 
 set(logind_dbus_interfaces manager session)
@@ -21,13 +22,12 @@ endforeach(interface)
 
 include(FindPkgConfig)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.30)
-pkg_check_modules(XCB REQUIRED xcb)
-pkg_check_modules(XCB_UTIL REQUIRED xcb-util)
+pkg_check_modules(XCB_EVENT REQUIRED xcb-event)
 pkg_check_modules(XCB_SCREENSAVER REQUIRED xcb-screensaver)
-include_directories(${GLIB2_INCLUDE_DIRS} ${XCB_INCLUDE_DIRS}
-    ${XCB_UTIL_INCLUDE_DIRS} ${XCB_SCREENSAVER_INCLUDE_DIRS})
-link_directories(${GLIB2_LIBRARY_DIRS} ${XCB_LIBRARY_DIRS}
-    ${XCB_UTIL_LIBRARY_DIRS} ${XCB_SCREENSAVER_LIBRARY_DIRS})
+include_directories(${GLIB2_INCLUDE_DIRS} ${XCB_EVENT_INCLUDE_DIRS}
+    ${XCB_SCREENSAVER_INCLUDE_DIRS})
+link_directories(${GLIB2_LIBRARY_DIRS} ${XCB_EVENT_LIBRARY_DIRS}
+    ${XCB_SCREENSAVER_LIBRARY_DIRS})
 
 add_executable(xlocklaunch
     xlocklaunch.c
@@ -37,7 +37,7 @@ add_executable(xlocklaunch
     ${logind_dbus_sources}
 )
 
-target_link_libraries(xlocklaunch ${GLIB2_LIBRARIES} ${XCB_LIBRARIES}
-    ${XCB_UTIL_LIBRARIES} ${XCB_SCREENSAVER_LIBRARIES})
+target_link_libraries(xlocklaunch ${GLIB2_LIBRARIES} ${XCB_EVENT_LIBRARIES}
+    ${XCB_SCREENSAVER_LIBRARIES})
 
 install(TARGETS xlocklaunch DESTINATION bin)

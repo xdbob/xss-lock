@@ -1,8 +1,7 @@
 #include "x_event_source.h"
 
 // TODO:
-// - dispatch/callback return value
-// - handle xcb errors?
+// - handle xcb_connection_has_error?
 
 typedef struct XEventSource {
     GSource source;
@@ -40,8 +39,8 @@ x_event_prepare(GSource *source, gint *timeout)
 {
     XEventSource *x_event_source = (XEventSource *)source;
     
-    enqueue_events(x_event_source, xcb_poll_for_queued_event);
     xcb_flush(x_event_source->connection);
+    enqueue_events(x_event_source, xcb_poll_for_queued_event);
 
     if (g_queue_is_empty(x_event_source->queue)) {
         *timeout = -1;
@@ -58,26 +57,27 @@ x_event_check(GSource *source)
     XEventSource *x_event_source = (XEventSource *)source;
 
     enqueue_events(x_event_source, xcb_poll_for_event);
-
     return !g_queue_is_empty(x_event_source->queue);
 }
 
 static gboolean
 x_event_dispatch(GSource *source, GSourceFunc callback, gpointer user_data)
 {
-    xcb_generic_event_t *event;
+    XEventSource *x_event_source = (XEventSource *)source;
     XEventFunc x_event_callback = (XEventFunc)callback;
+    xcb_generic_event_t *event;
+    gboolean again = TRUE;
 
     if (!callback) {
         g_warning("XEvent source dispatched without a callback");
         return FALSE;
     }
 
-    while (event = q_queue_pop_head(x_event_source->queue)) {
-        x_event_callback(event, user_data);
+    while (again && (event = q_queue_pop_head(x_event_source->queue))) {
+        again = x_event_callback(x_event_source->connection, event, user_data);
         free(event);
     }
-    return; // FIXME
+    return again;
 }
 
 static void

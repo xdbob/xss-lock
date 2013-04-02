@@ -6,7 +6,7 @@
 
 G_BEGIN_DECLS
 
-typedef gboolean (*XEventFunc)(xcb_generic_event_t *event, gpointer user_data);
+typedef gboolean (*XEventFunc)(xcb_connection_t *connection, xcb_generic_event_t *event, gpointer user_data);
 
 GSource *x_event_source_new(xcb_connection_t *connection);
 

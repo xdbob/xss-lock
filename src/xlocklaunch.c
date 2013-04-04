@@ -55,8 +55,8 @@ static gboolean reset_screensaver(xcb_connection_t *connection);
 static gboolean exit_service(GMainLoop *loop);
 
 static Child notifier = {"notifier", NULL, 0, NULL};
-static Child locker = {"locker", NULL, 0, &notifier}; // TODO: set default cmd or check in parse_opts
-static gboolean opt_ignore_sleep = FALSE; // don't lock on suspend
+static Child locker = {"locker", NULL, 0, &notifier};
+static gboolean opt_ignore_sleep = FALSE;
 
 static GOptionEntry opt_entries[] = {
     {"locker", 'l', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_locker_cmd, "lock command", "CMD"},
@@ -331,6 +331,12 @@ parse_options(int argc, char *argv[], GError **error)
     g_option_context_add_main_entries(opt_context, opt_entries, NULL);
     success = g_option_context_parse(opt_context, &argc, &argv, error);
     g_option_context_free(opt_context);
+
+    if (success && !locker.cmd) {
+        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
+                    "No %s specified", locker.name);
+        success = FALSE;
+    }
     return success;
 
 }

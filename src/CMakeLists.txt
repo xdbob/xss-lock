@@ -42,3 +42,16 @@ add_executable(xlocklaunch
 target_link_libraries(xlocklaunch ${GLIB2_LIBRARIES} ${XCB_LIBRARIES})
 
 install(TARGETS xlocklaunch DESTINATION bin)
+
+find_program(rst2man NAMES rst2man rst2man.py rst2man2 rst2man2.py)
+if(rst2man)
+    set(man_input xlocklaunch.1.rst)
+    set(man_output xlocklaunch.1)
+    add_custom_command(OUTPUT ${man_output}
+        COMMAND ${rst2man} ${CMAKE_CURRENT_SOURCE_DIR}/${man_input} ${man_output}
+        DEPENDS ${man_input})
+    add_custom_target(man ALL DEPENDS ${man_output})
+    install(FILES ${man_output} DESTINATION share/man/man1)
+else()
+    message(WARNING "rst2man (docutils) not found, disabling man page generation")
+endif()

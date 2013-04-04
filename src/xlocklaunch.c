@@ -21,7 +21,7 @@
 #define XCB_ERROR xcb_error_quark()
 
 GQuark
-xcb_error_quark(void) G_GNUC_CONST
+xcb_error_quark(void)// G_GNUC_CONST
 {
     return g_quark_from_static_string("xcb-error-quark");
 }
@@ -33,8 +33,9 @@ typedef struct Child {
     struct Child *kill_first;
 } Child;
 
-static const xcb_screen_t *get_screen(xcb_connection_t *connection, int screen_number);
-static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t *atom, GError **error);
+static xcb_screen_t *get_screen(xcb_connection_t *connection, int screen_number);
+static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, uint32_t *xid, xcb_atom_t *atom, GError **error);
+static gboolean unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
 static gboolean screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event, const int *xcb_screensaver_notify);
 
 static void start_child(Child *child);
@@ -72,7 +73,7 @@ static logindSession *logind_session = NULL;
 
 static gint32 sleep_lock_fd = -1;
 
-static const xcb_screen_t *
+static xcb_screen_t *
 get_screen(xcb_connection_t *connection, int screen_number)
 {
     const xcb_setup_t *setup = xcb_get_setup(connection);
@@ -88,14 +89,27 @@ get_screen(xcb_connection_t *connection, int screen_number)
 
 static gboolean
 register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
-                     xcb_atom_t *atom, GError **error)
+                     uint32_t *xid, xcb_atom_t *atom, GError **error)
 {
+    const xcb_query_extension_reply_t *extension_reply;
     xcb_screensaver_query_version_cookie_t version_cookie;
-    xcb_screensaver_query_version_reply_t *version_reply;
+    xcb_screensaver_query_version_reply_t *version_reply = NULL;
     xcb_intern_atom_cookie_t atom_cookie;
-    xcb_intern_atom_reply_t *atom_reply;
+    xcb_intern_atom_reply_t *atom_reply = NULL;
     xcb_void_cookie_t set_attributes_cookie;
-    xcb_generic_error_t *xcb_error;
+    xcb_generic_error_t *xcb_error = NULL;
+
+    xcb_prefetch_extension_data(connection, &xcb_screensaver_id);
+    *xid = xcb_generate_id(connection);
+    xcb_create_pixmap(connection, screen->root_depth, *xid, screen->root, 1, 1);
+    atom_cookie = xcb_intern_atom(connection, FALSE,
+                                  strlen(XCB_SCREENSAVER_PROPERTY_NAME),
+                                  XCB_SCREENSAVER_PROPERTY_NAME);
+    extension_reply = xcb_get_extension_data(connection, &xcb_screensaver_id);
+    if (!extension_reply || !extension_reply->present) {
+        g_set_error(error, XCB_ERROR, 0, "Screensaver extension unavailable");
+        goto out;
+    }
 
     version_cookie = xcb_screensaver_query_version(connection, 1, 0);
     set_attributes_cookie =
@@ -105,30 +119,44 @@ register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
                                                XCB_COPY_FROM_PARENT,
                                                XCB_COPY_FROM_PARENT,
                                                0, NULL);
-    atom_cookie = xcb_intern_atom(connection, FALSE,
-                                  strlen(XCB_SCREENSAVER_PROPERTY_NAME),
-                                  XCB_SCREENSAVER_PROPERTY_NAME);
 
     xcb_screensaver_select_input(connection, screen->root,
                                  XCB_SCREENSAVER_EVENT_NOTIFY_MASK |
                                  XCB_SCREENSAVER_EVENT_CYCLE_MASK);
 
-    if (xcb_error = xcb_request_check(connection, set_attributes_cookie))
-        goto xcb_error;
-
     version_reply = xcb_screensaver_query_version_reply(connection,
                                                         version_cookie,
                                                         &xcb_error);
+    if (xcb_error = xcb_request_check(connection, set_attributes_cookie)) {
+        g_set_error(error, XCB_ERROR, 0, "Error setting screensaver attributes"
+                                         " -- is another one running?");
+        goto out;
+    }
+
     atom_reply = xcb_intern_atom_reply(connection, atom_cookie, &xcb_error);
-    // TODO: create pixmap, get its xid
+    *atom = atom_reply->atom;
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, screen->root,
-                        atom_reply->atom, XCB_ATOM_PIXMAP, 32, 1, xid);
-    // TODO: register atom, need XID or something?
+                        *atom, XCB_ATOM_PIXMAP, 32, 1, xid);
+
+    x_event_add(connection, (XEventFunc)screensaver_event_cb,
+                (void *)&extension_reply->first_event);
+
+out:
+    if (version_reply) free(version_reply);
+    if (atom_reply) free(atom_reply);
+    if (xcb_error) {
+        free(xcb_error);
+        return FALSE;
+    }
     return TRUE;
-    // TODO: free stuff, rework goto/label
-xcb_error:
-    g_set_error(error, XCB_ERROR, 0, );
-    return FALSE;
+}
+
+static gboolean
+unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
+                       xcb_atom_t atom)
+{
+    xcb_screensaver_unset_attributes(connection, screen->root);
+    xcb_delete_property(connection, screen->root, atom);
 }
 
 static gboolean
@@ -393,10 +421,11 @@ main(int argc, char *argv[])
     GMainLoop *loop;
     GError *error = NULL;
     GCancellable *cancellable;
-    xcb_connection_t *connection;
+    xcb_connection_t *connection = NULL;
     int default_screen_number;
-    const xcb_screen_t *default_screen;
-    const xcb_query_extension_reply_t *extension_reply;
+    xcb_screen_t *default_screen;
+    uint32_t xid;
+    xcb_atom_t atom;
 
     setlocale(LC_ALL, "");
     
@@ -409,50 +438,40 @@ main(int argc, char *argv[])
         goto init_error;
     }
 
-    xcb_prefetch_extension_data(connection, &xcb_screensaver_id);
-    // TODO: create pixmap and atom
-
 #if !GLIB_CHECK_VERSION(2, 36, 0)
     g_type_init();
 #endif
-
+ 
+    cancellable = g_cancellable_new();
     logind_manager_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
                                      G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
                                      LOGIND_SERVICE, LOGIND_PATH,
                                      cancellable, logind_manager_proxy_new_cb,
                                      NULL);
 
+    loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);
     g_unix_signal_add(SIGINT, (GSourceFunc)exit_service, loop);
     g_unix_signal_add(SIGHUP, (GSourceFunc)reset_screensaver, connection);
 
-    extension_reply = xcb_get_extension_data(connection, &xcb_screensaver_id);
-    if (!extension_reply || !extension_reply->present) {
+    default_screen = get_screen(connection, default_screen_number);
+    if (!register_screensaver(connection, default_screen, &xid, &atom, &error)) {
         g_cancellable_cancel(cancellable);
-        g_set_error(&error, XCB_ERROR, 0, "Screensaver extension unavailable");
         goto init_error;
     }
 
-    default_screen = get_screen(connection, default_screen_number);
-    if (!register_screensaver(connection, default_screen, &error))
-        goto init_error;
-
-    x_event_add(connection, (XEventFunc)screensaver_event_cb,
-                (void *)&extension_reply->first_event);
-
-    loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(loop);
 
-    xcb_screensaver_unset_attributes(connection, *default_screen);
-
+    unregister_screensaver(connection, default_screen, atom);
     g_main_loop_unref(loop);
-    if (sleep_lock_fd >= 0)
-        close(sleep_lock_fd);
+    if (sleep_lock_fd >= 0) close(sleep_lock_fd);
+    if (logind_manager) g_object_unref(logind_manager);
+    if (logind_session) g_object_unref(logind_session);
 
 init_error:
-    xcb_disconnect(connection);
     g_strfreev(notifier.cmd);
     g_strfreev(locker.cmd);
+    if (connection) xcb_disconnect(connection);
 
     if (error) {
         g_printerr("%s", error->message);

@@ -1,4 +1,5 @@
 #include "x_event_source.h"
+#include <stdlib.h>
 
 // TODO:
 // - handle xcb_connection_has_error?
@@ -7,7 +8,7 @@ typedef struct XEventSource {
     GSource source;
     xcb_connection_t *connection;
 #if !GLIB_CHECK_VERSION(2, 36, 0)
-    GPollFD poll_fd;
+    GPollFD poll;
 #endif
     GQueue *queue;
 } XEventSource;
@@ -15,7 +16,7 @@ typedef struct XEventSource {
 static gboolean x_event_prepare(GSource *source, gint *timeout);
 static gboolean x_event_check(GSource *source);
 static gboolean x_event_dispatch(GSource *source, GSourceFunc callback, gpointer user_data);
-static gboolean x_event_finalize(GSource *source);
+static void x_event_finalize(GSource *source);
 
 static GSourceFuncs x_event_funcs = {
     x_event_prepare,
@@ -73,7 +74,7 @@ x_event_dispatch(GSource *source, GSourceFunc callback, gpointer user_data)
         return FALSE;
     }
 
-    while (again && (event = q_queue_pop_head(x_event_source->queue))) {
+    while (again && (event = g_queue_pop_head(x_event_source->queue))) {
         again = x_event_callback(x_event_source->connection, event, user_data);
         free(event);
     }
@@ -85,7 +86,7 @@ x_event_finalize(GSource *source)
 {
     XEventSource *x_event_source = (XEventSource *)source;
 
-    q_queue_free_full(x_event_source->queue, free);
+    g_queue_free_full(x_event_source->queue, free);
 }
 
 GSource *
@@ -102,8 +103,9 @@ x_event_source_new(xcb_connection_t *connection)
 #if GLIB_CHECK_VERSION(2, 36, 0)
     g_source_add_unix_fd(source, xcb_fd, fd_event_mask);
 #else
-    x_event_source->poll_fd = {xcb_fd, fd_event_mask, 0};
-    g_source_add_poll(source, x_event_source->poll_fd);
+    x_event_source->poll.fd = xcb_fd;
+    x_event_source->poll.events = fd_event_mask;
+    g_source_add_poll(source, &x_event_source->poll);
 #endif
     
     return source;

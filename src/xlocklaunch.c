@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <glib-unix.h>
 #include <gio/gio.h>
+#include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/screensaver.h>
 
@@ -185,7 +186,7 @@ start_child(Child *child)
 
     if (!g_spawn_async(NULL, child->cmd, NULL, flags, NULL, NULL,
                        &child->pid, &error)) {
-        g_printerr("Error spawning %s: ", child->name, error->message);
+        g_printerr("Error spawning %s: %s", child->name, error->message);
         g_error_free(error);
         return;
     }
@@ -206,7 +207,7 @@ child_watch_cb(GPid pid, gint status, Child *child)
     GError *error = NULL;
 
     if (!g_spawn_check_exit_status(status, &error)) { // TODO: replace by UNIX-specific functions, otherwise this requires glib>=2.34 vs. 2.30 for g_unix_signal_add
-        g_printerr("%s exited abnormally: ", child->name, error->message);
+        g_printerr("%s exited abnormally: %s", child->name, error->message);
         g_error_free(error);
     }
     child->pid = 0;

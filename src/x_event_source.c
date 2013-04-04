@@ -41,7 +41,9 @@ x_event_prepare(GSource *source, gint *timeout)
     XEventSource *x_event_source = (XEventSource *)source;
     
     xcb_flush(x_event_source->connection);
+#if XCB_POLL_FOR_QUEUED_EVENT
     enqueue_events(x_event_source, xcb_poll_for_queued_event);
+#endif
 
     if (g_queue_is_empty(x_event_source->queue)) {
         *timeout = -1;

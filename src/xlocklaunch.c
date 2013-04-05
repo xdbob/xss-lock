@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <glib-unix.h>
 #include <gio/gio.h>
+#include <gio/gunixfdlist.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/screensaver.h>
@@ -59,20 +60,20 @@ static void logind_manager_call_get_session_cb(GObject *source_object, GAsyncRes
 static void logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
 
 static gboolean parse_options(int argc, char *argv[], GError **error);
-static gboolean parse_locker_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
 static gboolean parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
-static gboolean parse_child_cmd(const gchar *option_name, const gchar *value, Child *child, GError **error);
 static gboolean reset_screensaver(xcb_connection_t *connection);
 static gboolean exit_service(GMainLoop *loop);
 
 static Child notifier = {"notifier", NULL, 0, NULL};
 static Child locker = {"locker", NULL, 0, &notifier};
 static gboolean opt_ignore_sleep = FALSE;
+static gboolean opt_print_version = FALSE;
 
 static GOptionEntry opt_entries[] = {
-    {"locker", 'l', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_locker_cmd, "lock command", "CMD"},
+    {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &locker.cmd, NULL, "LOCK_CMD [ARG...]"},
     {"notifier", 'n', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_notifier_cmd, "notify command", "CMD"},
     {"ignore-sleep", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_sleep, "do not lock on suspend/hibernate", NULL},
+    {"version", 0, 0, G_OPTION_ARG_NONE, &opt_print_version, "print version number and exit", NULL},
     {NULL}
 };
 
@@ -143,8 +144,8 @@ register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
                                                         version_cookie,
                                                         &xcb_error);
     if (xcb_error = xcb_request_check(connection, set_attributes_cookie)) {
-        g_set_error(error, XCB_ERROR, 0, "Error setting screensaver attributes"
-                                         " -- is another one running?");
+        g_set_error(error, XCB_ERROR, 0, "Error setting screensaver attributes;"
+                                         " is another one running?");
         goto out;
     }
 
@@ -196,11 +197,10 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
                 // - try to see it in action
                 // - figure out if it also generates an OFF event (to be ignored)
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
-            } else if (!notifier.cmd || xss_event->forced) {
+            } else if (!notifier.cmd || xss_event->forced)
                 start_child(&locker);
-            } else {
+            else
                 start_child(&notifier);
-            }
             break;
         case XCB_SCREENSAVER_STATE_OFF:
             kill_child(&notifier);
@@ -266,8 +266,6 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     logind_manager = logind_manager_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_manager) {
-        if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-            g_printerr("GDBUS CALLBACK REACHED WITH CANCELLED STATE");
         g_printerr("Error connecting to systemd login manager: %s",
                    error->message);
         g_error_free(error);
@@ -289,7 +287,7 @@ take_sleep_delay_lock(void)
         return;
 
     logind_manager_call_inhibit(logind_manager, "sleep", APP_NAME,
-                                "Lock screen first", "delay", NULL,
+                                "Lock screen first", "delay", NULL, NULL,
                                 logind_manager_call_inhibit_cb, NULL);
 }
 
@@ -299,15 +297,22 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
 {
     GVariant *lock_handle;
     GError *error = NULL;
+    GUnixFDList *fd_list = g_unix_fd_list_new();
     
-    if (!logind_manager_call_inhibit_finish(logind_manager,
-                                            &lock_handle, res, &error)) {
+    if (!logind_manager_call_inhibit_finish(logind_manager, &lock_handle,
+                                            &fd_list, res, &error)) {
         g_printerr("Error taking sleep inhibitor lock: %s", error->message);
         g_error_free(error);
         return;
     }
-    sleep_lock_fd = g_variant_get_handle(lock_handle);
+    sleep_lock_fd = g_unix_fd_list_get(fd_list, g_variant_get_handle(lock_handle), &error);
+    if (sleep_lock_fd == -1) {
+        g_printerr("Error getting file descriptor for sleep inhibitor lock: %s", error->message);
+        g_error_free(error);
+        return;
+    }
     g_variant_unref(lock_handle);
+    g_object_unref(fd_list);
 }
 
 static void
@@ -371,7 +376,7 @@ parse_options(int argc, char *argv[], GError **error)
 
     opt_context = g_option_context_new("- TODO");
     g_option_context_set_summary(opt_context,
-                                 ""); // TODO
+                                 "TODO");
     g_option_context_add_main_entries(opt_context, opt_entries, NULL);
     success = g_option_context_parse(opt_context, &argc, &argv, error);
     g_option_context_free(opt_context);
@@ -382,27 +387,15 @@ parse_options(int argc, char *argv[], GError **error)
         success = FALSE;
     }
     return success;
-
 }
 
 static gboolean
-parse_locker_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error)
-{
-    return parse_child_cmd(option_name, value, &locker, error);
-}
-
-static gboolean
-parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error)
-{
-    return parse_child_cmd(option_name, value, &notifier, error);
-}
-
-static gboolean
-parse_child_cmd(const gchar *option_name, const gchar *value, Child *child, GError **error)
+parse_notifier_cmd(const gchar *option_name, const gchar *value,
+                   gpointer data, GError **error)
 {
     GError *parse_error = NULL;
 
-    if (!g_shell_parse_argv(value, NULL, &child->cmd, &parse_error)) {
+    if (!g_shell_parse_argv(value, NULL, &notifier.cmd, &parse_error)) {
         g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_FAILED,
                     "Error parsing argument for %s: %s",
                     option_name, parse_error->message);
@@ -435,7 +428,6 @@ main(int argc, char *argv[])
 {
     GMainLoop *loop;
     GError *error = NULL;
-    GCancellable *cancellable;
     xcb_connection_t *connection = NULL;
     int default_screen_number;
     xcb_screen_t *default_screen;
@@ -444,8 +436,13 @@ main(int argc, char *argv[])
 
     setlocale(LC_ALL, "");
     
-    if (!parse_options(argc, argv, &error))
+    if (!parse_options(argc, argv, &error) || opt_print_version) {
+        if (opt_print_version) {
+            g_print(VERSION "\n");
+            g_clear_error(&error);
+        }
         goto init_error;
+    }
 
     connection = xcb_connect(NULL, &default_screen_number);
     if (xcb_connection_has_error(connection)) {
@@ -457,12 +454,10 @@ main(int argc, char *argv[])
     g_type_init();
 #endif
  
-    cancellable = g_cancellable_new();
     logind_manager_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
                                      G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
-                                     LOGIND_SERVICE, LOGIND_PATH,
-                                     cancellable, logind_manager_proxy_new_cb,
-                                     NULL);
+                                     LOGIND_SERVICE, LOGIND_PATH, NULL,
+                                     logind_manager_proxy_new_cb, NULL);
 
     loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);
@@ -470,10 +465,8 @@ main(int argc, char *argv[])
     g_unix_signal_add(SIGHUP, (GSourceFunc)reset_screensaver, connection);
 
     default_screen = get_screen(connection, default_screen_number);
-    if (!register_screensaver(connection, default_screen, &xid, &atom, &error)) {
-        g_cancellable_cancel(cancellable);
+    if (!register_screensaver(connection, default_screen, &xid, &atom, &error))
         goto init_error;
-    }
 
     g_main_loop_run(loop);
 

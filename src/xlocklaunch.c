@@ -22,7 +22,6 @@
 #define XCB_ERROR xcb_error_quark()
 
 #define xcb_screensaver_notify_event_t xcb_screensaver_notify_event_t_fixed
-
 typedef struct xcb_screensaver_notify_event_t_fixed {
     uint8_t         response_type; /**<  */
     uint8_t         state; /**<  */
@@ -36,9 +35,9 @@ typedef struct xcb_screensaver_notify_event_t_fixed {
 } xcb_screensaver_notify_event_t_fixed;
 
 typedef struct Child {
-    gchar *name;
-    gchar **cmd;
-    GPid pid;
+    gchar        *name;
+    gchar       **cmd;
+    GPid          pid;
     struct Child *kill_first;
 } Child;
 
@@ -482,7 +481,7 @@ init_error:
     if (connection) xcb_disconnect(connection);
 
     if (error) {
-        g_printerr("%s", error->message);
+        g_printerr("%s\n", error->message);
         g_error_free(error);
         exit(EXIT_FAILURE);
     }

@@ -20,11 +20,19 @@
 #define XCB_SCREENSAVER_PROPERTY_NAME "_MIT_SCREEN_SAVER_ID"
 #define XCB_ERROR xcb_error_quark()
 
-GQuark
-xcb_error_quark(void)// G_GNUC_CONST
-{
-    return g_quark_from_static_string("xcb-error-quark");
-}
+#define xcb_screensaver_notify_event_t xcb_screensaver_notify_event_t_fixed
+
+typedef struct xcb_screensaver_notify_event_t_fixed {
+    uint8_t         response_type; /**<  */
+    uint8_t         state; /**<  */
+    uint16_t        sequence; /**<  */
+    xcb_timestamp_t time; /**<  */
+    xcb_window_t    root; /**<  */
+    xcb_window_t    window; /**<  */
+    uint8_t         kind; /**<  */
+    uint8_t         forced; /**<  */
+    uint8_t         pad1[14]; /**<  */
+} xcb_screensaver_notify_event_t_fixed;
 
 typedef struct Child {
     gchar *name;
@@ -33,6 +41,7 @@ typedef struct Child {
     struct Child *kill_first;
 } Child;
 
+static GQuark xcb_error_quark(void) G_GNUC_CONST;
 static xcb_screen_t *get_screen(xcb_connection_t *connection, int screen_number);
 static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, uint32_t *xid, xcb_atom_t *atom, GError **error);
 static gboolean unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
@@ -72,6 +81,12 @@ static logindManager *logind_manager = NULL;
 static logindSession *logind_session = NULL;
 
 static gint32 sleep_lock_fd = -1;
+
+GQuark
+xcb_error_quark(void)
+{
+    return g_quark_from_static_string("xcb-error-quark");
+}
 
 static xcb_screen_t *
 get_screen(xcb_connection_t *connection, int screen_number)

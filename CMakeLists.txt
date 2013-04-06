@@ -20,8 +20,8 @@ include_directories("${PROJECT_BINARY_DIR}")
 
 add_executable(xss-lock
     xss-lock.c
-    x_event_source.c
-    x_event_source.h
+    xcb_util.c
+    xcb_util.h
     config.h
 )
 

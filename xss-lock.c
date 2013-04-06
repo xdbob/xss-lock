@@ -11,7 +11,7 @@
 #include <xcb/screensaver.h>
 
 #include "config.h"
-#include "x_event_source.h"
+#include "xcb_util.h"
 
 #define LOGIND_SERVICE "org.freedesktop.login1"
 #define LOGIND_PATH    "/org/freedesktop/login1"
@@ -19,7 +19,6 @@
 #define LOGIND_SESSION_INTERFACE "org.freedesktop.login1.Session"
 
 #define XCB_SCREENSAVER_PROPERTY_NAME "_MIT_SCREEN_SAVER_ID"
-#define XCB_ERROR xcb_error_quark()
 
 #define xcb_screensaver_notify_event_t xcb_screensaver_notify_event_t_fixed
 typedef struct xcb_screensaver_notify_event_t_fixed {
@@ -41,8 +40,6 @@ typedef struct Child {
     struct Child *kill_first;
 } Child;
 
-static GQuark xcb_error_quark(void) G_GNUC_CONST;
-static xcb_screen_t *get_screen(xcb_connection_t *connection, int screen_number);
 static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t *atom, GError **error);
 static gboolean unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
 static gboolean screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event, const int *xcb_screensaver_notify);
@@ -82,26 +79,6 @@ static GDBusProxy *logind_manager = NULL;
 static GDBusProxy *logind_session = NULL;
 
 static gint sleep_lock_fd = -1;
-
-GQuark
-xcb_error_quark(void)
-{
-    return g_quark_from_static_string("xcb-error-quark");
-}
-
-static xcb_screen_t *
-get_screen(xcb_connection_t *connection, int screen_number)
-{
-    const xcb_setup_t *setup = xcb_get_setup(connection);
-    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
-
-    g_return_val_if_fail(screen_number < xcb_setup_roots_length(setup), NULL);
-
-    while (screen_number--)
-        xcb_screen_next(&iter);
-
-    return iter.data;
-}
 
 static gboolean
 register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
@@ -155,8 +132,8 @@ register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, screen->root,
                         *atom, XCB_ATOM_PIXMAP, 32, 1, &xid);
 
-    x_event_add(connection, (XEventFunc)screensaver_event_cb,
-                (void *)&extension_reply->first_event);
+    xcb_event_add(connection, (XcbEventFunc)screensaver_event_cb,
+                  (void *)&extension_reply->first_event);
 
 out:
     if (version_reply) free(version_reply);
@@ -496,7 +473,7 @@ main(int argc, char *argv[])
     g_unix_signal_add(SIGINT, (GSourceFunc)exit_service, loop);
     g_unix_signal_add(SIGHUP, (GSourceFunc)reset_screensaver, connection);
 
-    default_screen = get_screen(connection, default_screen_number);
+    default_screen = xcb_get_screen(connection, default_screen_number);
     if (!register_screensaver(connection, default_screen, &atom, &error))
         goto init_error;
 

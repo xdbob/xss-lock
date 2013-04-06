@@ -255,7 +255,8 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     if (!opt_ignore_sleep) {
         logind_manager_take_sleep_delay_lock();
         g_signal_connect(logind_manager, "g-signal",
-                         G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
+                         G_CALLBACK(logind_manager_on_signal_prepare_for_sleep),
+                         NULL);
     }
 }
 
@@ -309,10 +310,13 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
                                            GVariant   *parameters,
                                            gpointer    user_data)
 {
+    gboolean active;
+
     if (g_strcmp0(signal_name, "PrepareForSleep"))
         return;
 
-    if (g_variant_get_boolean(parameters)) {
+    g_variant_get(parameters, "(b)", &active);
+    if (active) {
         start_child(&locker);
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
@@ -382,7 +386,7 @@ parse_options(int argc, char *argv[], GError **error)
     GOptionContext *opt_context;
     gboolean success;
 
-    opt_context = g_option_context_new("- TODO");
+    opt_context = g_option_context_new("- use external locker as X screensaver");
     g_option_context_set_summary(opt_context,
                                  "TODO");
     g_option_context_add_main_entries(opt_context, opt_entries, NULL);

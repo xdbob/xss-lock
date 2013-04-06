@@ -295,24 +295,26 @@ static void
 logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
                                gpointer user_data)
 {
-    GVariant *lock_handle;
+    GVariant *lock_handle = NULL;
     GError *error = NULL;
     GUnixFDList *fd_list = g_unix_fd_list_new();
     
     if (!logind_manager_call_inhibit_finish(logind_manager, &lock_handle,
                                             &fd_list, res, &error)) {
         g_printerr("Error taking sleep inhibitor lock: %s", error->message);
-        g_error_free(error);
-        return;
+        goto out;
     }
-    sleep_lock_fd = g_unix_fd_list_get(fd_list, g_variant_get_handle(lock_handle), &error);
-    if (sleep_lock_fd == -1) {
-        g_printerr("Error getting file descriptor for sleep inhibitor lock: %s", error->message);
-        g_error_free(error);
-        return;
-    }
-    g_variant_unref(lock_handle);
+    sleep_lock_fd = g_unix_fd_list_get(fd_list,
+                                       g_variant_get_handle(lock_handle),
+                                       &error);
+    if (sleep_lock_fd == -1)
+        g_printerr("Error getting file descriptor for sleep inhibitor lock: %s",
+                   error->message);
+
+out:
     g_object_unref(fd_list);
+    if (error) g_error_free(error);
+    if (lock_handle) g_variant_unref(lock_handle);
 }
 
 static void

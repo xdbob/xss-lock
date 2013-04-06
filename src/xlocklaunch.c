@@ -12,11 +12,11 @@
 
 #include "config.h"
 #include "x_event_source.h"
-#include "logind_manager.h"
-#include "logind_session.h"
 
 #define LOGIND_SERVICE "org.freedesktop.login1"
 #define LOGIND_PATH    "/org/freedesktop/login1"
+#define LOGIND_MANAGER_INTERFACE "org.freedesktop.login1.Manager"
+#define LOGIND_SESSION_INTERFACE "org.freedesktop.login1.Session"
 
 #define XCB_SCREENSAVER_PROPERTY_NAME "_MIT_SCREEN_SAVER_ID"
 #define XCB_ERROR xcb_error_quark()
@@ -52,11 +52,12 @@ static void kill_child(Child *child);
 static void child_watch_cb(GPid pid, gint status, Child *child);
 
 static void logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
-static void take_sleep_delay_lock(void);
+static void logind_manager_take_sleep_delay_lock(void);
 static void logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
-static void logind_manager_prepare_for_sleep_cb(gboolean active);
+static void logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data);
 static void logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
 static void logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
+static void logind_session_on_signal_lock(GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data);
 
 static gboolean parse_options(int argc, char *argv[], GError **error);
 static gboolean parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
@@ -76,11 +77,11 @@ static GOptionEntry opt_entries[] = {
     {NULL}
 };
 
-static logindManager *logind_manager = NULL;
+static GDBusProxy *logind_manager = NULL;
 
-static logindSession *logind_session = NULL;
+static GDBusProxy *logind_session = NULL;
 
-static gint32 sleep_lock_fd = -1;
+static gint sleep_lock_fd = -1;
 
 GQuark
 xcb_error_quark(void)
@@ -104,7 +105,7 @@ get_screen(xcb_connection_t *connection, int screen_number)
 
 static gboolean
 register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
-                     uint32_t *xid, xcb_atom_t *atom, GError **error)
+                     xcb_atom_t *atom, GError **error)
 {
     uint32_t xid;
     const xcb_query_extension_reply_t *extension_reply;
@@ -263,7 +264,7 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
 {
     GError *error = NULL;
 
-    logind_manager = logind_manager_proxy_new_for_bus_finish(res, &error);
+    logind_manager = g_dbus_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_manager) {
         g_printerr("Error connecting to systemd login manager: %s",
@@ -271,42 +272,50 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
         g_error_free(error);
         return;
     }
-    logind_manager_call_get_session_by_pid(logind_manager, (guint)getpid(), NULL,
-                                           logind_manager_call_get_session_cb, NULL);
+    g_dbus_proxy_call(logind_manager, "GetSessionByPID",
+                      g_variant_new("(u)", getpid()), G_DBUS_CALL_FLAGS_NONE,
+                      -1, NULL, logind_manager_call_get_session_cb, NULL);
     if (!opt_ignore_sleep) {
-        take_sleep_delay_lock();
-        g_signal_connect(logind_manager, "prepare-for-sleep",
-                         G_CALLBACK(logind_manager_prepare_for_sleep_cb), NULL);
+        logind_manager_take_sleep_delay_lock();
+        g_signal_connect(logind_manager, "g-signal",
+                         G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
     }
 }
 
 static void
-take_sleep_delay_lock(void)
+logind_manager_take_sleep_delay_lock(void)
 {
     if (sleep_lock_fd >= 0)
         return;
 
-    logind_manager_call_inhibit(logind_manager, "sleep", APP_NAME,
-                                "Lock screen first", "delay", NULL, NULL,
-                                logind_manager_call_inhibit_cb, NULL);
+    g_dbus_proxy_call_with_unix_fd_list(logind_manager, "Inhibit",
+                                        g_variant_new("(ssss)", "sleep",
+                                                      APP_NAME,
+                                                      "Lock screen first",
+                                                      "delay"),
+                                        G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL,
+                                        logind_manager_call_inhibit_cb, NULL);
 }
 
 static void
 logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
                                gpointer user_data)
 {
-    GVariant *lock_handle = NULL;
+    GVariant *result = NULL;
     GError *error = NULL;
     GUnixFDList *fd_list = g_unix_fd_list_new();
+    gint32 fd_index = -1;
     
-    if (!logind_manager_call_inhibit_finish(logind_manager, &lock_handle,
-                                            &fd_list, res, &error)) {
+    result = g_dbus_proxy_call_with_unix_fd_list_finish(logind_manager,
+                                                             &fd_list,
+                                                             res, &error);
+    if (!result) {
         g_printerr("Error taking sleep inhibitor lock: %s", error->message);
         goto out;
     }
-    sleep_lock_fd = g_unix_fd_list_get(fd_list,
-                                       g_variant_get_handle(lock_handle),
-                                       &error);
+
+    g_variant_get(result, "(h)", &fd_index);
+    sleep_lock_fd = g_unix_fd_list_get(fd_list, fd_index, &error);
     if (sleep_lock_fd == -1)
         g_printerr("Error getting file descriptor for sleep inhibitor lock: %s",
                    error->message);
@@ -314,41 +323,51 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
 out:
     g_object_unref(fd_list);
     if (error) g_error_free(error);
-    if (lock_handle) g_variant_unref(lock_handle);
+    if (result) g_variant_unref(result);
 }
 
 static void
-logind_manager_prepare_for_sleep_cb(gboolean active)
+logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
+                                           gchar      *sender_name,
+                                           gchar      *signal_name,
+                                           GVariant   *parameters,
+                                           gpointer    user_data)
 {
-    if (active) {
+    if (g_strcmp0(signal_name, "PrepareForSleep") != 0)
+        return;
+
+    if (g_variant_get_boolean(parameters)) {
         start_child(&locker);
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
             sleep_lock_fd = -1;
         }
     } else
-        take_sleep_delay_lock();
+        logind_manager_take_sleep_delay_lock();
 }
 
 static void
 logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res,
                                    gpointer user_data)
 {
-    gchar *session_path;
+    GVariant *result = NULL;
     GError *error = NULL;
+    gchar *session_object_path = NULL;
 
-    if (!logind_manager_call_get_session_by_pid_finish(logind_manager,
-                                                       &session_path,
-                                                       res, &error)) {
+    result = g_dbus_proxy_call_finish(logind_manager, res, &error);
+    if (!result) {
         g_printerr("Error getting current session: %s", error->message);
         g_error_free(error);
         return;
     }
-    logind_session_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
-                                     G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
-                                     LOGIND_SERVICE, session_path,
-                                     NULL, logind_session_proxy_new_cb, NULL);
-    g_free(session_path);
+    g_variant_get(result, "(o)", &session_object_path);
+    g_dbus_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
+                             G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES, NULL,
+                             LOGIND_SERVICE, session_object_path,
+                             LOGIND_SESSION_INTERFACE, NULL,
+                             logind_session_proxy_new_cb, NULL);
+    g_variant_unref(result);
+    g_free(session_object_path);
 }
 
 static void
@@ -357,17 +376,28 @@ logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res,
 {
     GError *error = NULL;
 
-    logind_session = logind_session_proxy_new_for_bus_finish(res, &error);
+    logind_session = g_dbus_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_session) {
         g_printerr("Error connecting to session: %s", error->message);
         g_error_free(error);
         return;
     }
-    g_signal_connect(logind_session, "lock",
-                     G_CALLBACK(start_child), &locker);
-    g_signal_connect(logind_session, "unlock",
-                     G_CALLBACK(kill_child), &locker);
+    g_signal_connect(logind_session, "g-signal",
+                     G_CALLBACK(logind_session_on_signal_lock), NULL);
+}
+
+static void
+logind_session_on_signal_lock(GDBusProxy *proxy,
+                              gchar      *sender_name,
+                              gchar      *signal_name,
+                              GVariant   *parameters,
+                              gpointer    user_data)
+{
+    if (g_strcmp0(signal_name, "Lock") == 0)
+        start_child(&locker);
+    else if (g_strcmp0(signal_name, "Unlock") == 0)
+        kill_child(&locker);
 }
 
 static gboolean
@@ -455,10 +485,11 @@ main(int argc, char *argv[])
     g_type_init();
 #endif
  
-    logind_manager_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
-                                     G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES,
-                                     LOGIND_SERVICE, LOGIND_PATH, NULL,
-                                     logind_manager_proxy_new_cb, NULL);
+    g_dbus_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
+                             G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES, NULL,
+                             LOGIND_SERVICE, LOGIND_PATH,
+                             LOGIND_MANAGER_INTERFACE, NULL,
+                             logind_manager_proxy_new_cb, NULL);
 
     loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);

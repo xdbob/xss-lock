@@ -2,19 +2,6 @@ cmake_minimum_required(VERSION 2.8)
 project(xlocklaunch C)
 set(VERSION 0.1.0)
 
-set(logind_dbus_interfaces manager session)
-set(logind_dbus_sources)
-foreach(interface ${logind_dbus_interfaces})
-    set(input logind_${interface}.xml)
-    set(output logind_${interface}.c logind_${interface}.h)
-    list(APPEND logind_dbus_sources ${output})
-    add_custom_command(OUTPUT ${output}
-        COMMAND gdbus-codegen --generate-c-code logind_${interface}
-                --c-namespace logind --interface-prefix org.freedesktop.login1
-                ${CMAKE_CURRENT_SOURCE_DIR}/${input}
-        DEPENDS ${input} VERBATIM)
-endforeach()
-
 include(FindPkgConfig)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.30 gio-unix-2.0)
 pkg_check_modules(XCB REQUIRED xcb xcb-event xcb-screensaver)
@@ -36,7 +23,6 @@ add_executable(xlocklaunch
     x_event_source.c
     x_event_source.h
     config.h
-    ${logind_dbus_sources}
 )
 
 target_link_libraries(xlocklaunch ${GLIB2_LIBRARIES} ${XCB_LIBRARIES})

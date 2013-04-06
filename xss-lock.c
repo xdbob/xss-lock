@@ -80,6 +80,8 @@ static GDBusProxy *logind_session = NULL;
 
 static gint sleep_lock_fd = -1;
 
+static gboolean sleeping = FALSE;
+
 static gboolean
 register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
                      xcb_atom_t *atom, GError **error)
@@ -183,7 +185,10 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
         case XCB_SCREENSAVER_STATE_OFF:
             kill_child(&notifier);
             if (xss_event->forced)
-                kill_child(&locker);
+                if (sleeping)
+                    sleeping = FALSE;
+                else
+                    kill_child(&locker);
             break;
         case XCB_SCREENSAVER_STATE_CYCLE:
             start_child(&locker);
@@ -318,6 +323,7 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
     g_variant_get(parameters, "(b)", &active);
     if (active) {
         start_child(&locker);
+        sleeping = TRUE;
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
             sleep_lock_fd = -1;

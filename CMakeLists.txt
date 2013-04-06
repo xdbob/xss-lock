@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(xlocklaunch C)
+project(xss-lock C)
 set(VERSION 0.1.0)
 
 include(FindPkgConfig)
@@ -18,21 +18,21 @@ configure_file("${PROJECT_SOURCE_DIR}/config.h.in"
     "${PROJECT_BINARY_DIR}/config.h")
 include_directories("${PROJECT_BINARY_DIR}")
 
-add_executable(xlocklaunch
-    xlocklaunch.c
+add_executable(xss-lock
+    xss-lock.c
     x_event_source.c
     x_event_source.h
     config.h
 )
 
-target_link_libraries(xlocklaunch ${GLIB2_LIBRARIES} ${XCB_LIBRARIES})
+target_link_libraries(xss-lock ${GLIB2_LIBRARIES} ${XCB_LIBRARIES})
 
-install(TARGETS xlocklaunch DESTINATION bin)
+install(TARGETS xss-lock DESTINATION bin)
 
 find_program(rst2man NAMES rst2man rst2man.py rst2man2 rst2man2.py)
 if(rst2man)
-    set(man_input xlocklaunch.1.rst)
-    set(man_output xlocklaunch.1)
+    set(man_input xss-lock.1.rst)
+    set(man_output xss-lock.1)
     add_custom_command(OUTPUT ${man_output}
         COMMAND ${rst2man} ${CMAKE_CURRENT_SOURCE_DIR}/${man_input} ${man_output}
         DEPENDS ${man_input})

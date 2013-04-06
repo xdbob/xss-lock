@@ -212,7 +212,7 @@ start_child(Child *child)
 
     if (!g_spawn_async(NULL, child->cmd, NULL, flags, NULL, NULL,
                        &child->pid, &error)) {
-        g_printerr("Error spawning %s: %s", child->name, error->message);
+        g_warning("Error spawning %s: %s", child->name, error->message);
         g_error_free(error);
         return;
     }
@@ -223,8 +223,8 @@ static void
 kill_child(Child *child)
 {
     if (child->pid && kill(child->pid, SIGTERM))
-        g_printerr("Error sending SIGTERM to %s: %s",
-                   child->name, g_strerror(errno));
+        g_warning("Error sending SIGTERM to %s: %s",
+                  child->name, g_strerror(errno));
 }
 
 static void
@@ -233,7 +233,7 @@ child_watch_cb(GPid pid, gint status, Child *child)
     GError *error = NULL;
 
     if (!g_spawn_check_exit_status(status, &error)) { // TODO: replace by UNIX-specific functions, otherwise this requires glib>=2.34 vs. 2.30 for g_unix_signal_add
-        g_printerr("%s exited abnormally: %s", child->name, error->message);
+        g_message("%s exited abnormally: %s", child->name, error->message);
         g_error_free(error);
     }
     child->pid = 0;
@@ -249,8 +249,8 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     logind_manager = g_dbus_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_manager) {
-        g_printerr("Error connecting to systemd login manager: %s",
-                   error->message);
+        g_warning("Error connecting to systemd login manager: %s",
+                  error->message);
         g_error_free(error);
         return;
     }
@@ -293,14 +293,14 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
                                                              &fd_list,
                                                              res, &error);
     if (!result) {
-        g_printerr("Error taking sleep inhibitor lock: %s", error->message);
+        g_warning("Error taking sleep inhibitor lock: %s", error->message);
         g_error_free(error);
     }
 
     g_variant_get(result, "(h)", &fd_index);
     sleep_lock_fd = g_unix_fd_list_get(fd_list, fd_index, &error);
     if (sleep_lock_fd == -1) {
-        g_printerr("Error getting file descriptor for sleep inhibitor lock: %s",
+        g_warning("Error getting file descriptor for sleep inhibitor lock: %s",
                    error->message);
         g_error_free(error);
     }
@@ -342,7 +342,7 @@ logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res,
 
     result = g_dbus_proxy_call_finish(logind_manager, res, &error);
     if (!result) {
-        g_printerr("Error getting current session: %s", error->message);
+        g_warning("Error getting current session: %s", error->message);
         g_error_free(error);
         return;
     }
@@ -365,7 +365,7 @@ logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     logind_session = g_dbus_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_session) {
-        g_printerr("Error connecting to session: %s", error->message);
+        g_warning("Error connecting to session: %s", error->message);
         g_error_free(error);
         return;
     }

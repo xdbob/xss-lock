@@ -280,7 +280,7 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
 {
     GVariant *result = NULL;
     GError *error = NULL;
-    GUnixFDList *fd_list = g_unix_fd_list_new();
+    GUnixFDList *fd_list;
     gint32 fd_index = -1;
     
     result = g_dbus_proxy_call_with_unix_fd_list_finish(logind_manager,
@@ -288,19 +288,18 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
                                                              res, &error);
     if (!result) {
         g_printerr("Error taking sleep inhibitor lock: %s", error->message);
-        goto out;
+        g_error_free(error);
     }
 
     g_variant_get(result, "(h)", &fd_index);
     sleep_lock_fd = g_unix_fd_list_get(fd_list, fd_index, &error);
-    if (sleep_lock_fd == -1)
+    if (sleep_lock_fd == -1) {
         g_printerr("Error getting file descriptor for sleep inhibitor lock: %s",
                    error->message);
-
-out:
+        g_error_free(error);
+    }
+    g_variant_unref(result);
     g_object_unref(fd_list);
-    if (error) g_error_free(error);
-    if (result) g_variant_unref(result);
 }
 
 static void
@@ -310,7 +309,7 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
                                            GVariant   *parameters,
                                            gpointer    user_data)
 {
-    if (g_strcmp0(signal_name, "PrepareForSleep") != 0)
+    if (g_strcmp0(signal_name, "PrepareForSleep"))
         return;
 
     if (g_variant_get_boolean(parameters)) {
@@ -327,7 +326,7 @@ static void
 logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res,
                                    gpointer user_data)
 {
-    GVariant *result = NULL;
+    GVariant *result;
     GError *error = NULL;
     gchar *session_object_path = NULL;
 
@@ -371,9 +370,9 @@ logind_session_on_signal_lock(GDBusProxy *proxy,
                               GVariant   *parameters,
                               gpointer    user_data)
 {
-    if (g_strcmp0(signal_name, "Lock") == 0)
+    if (!g_strcmp0(signal_name, "Lock"))
         start_child(&locker);
-    else if (g_strcmp0(signal_name, "Unlock") == 0)
+    else if (!g_strcmp0(signal_name, "Unlock"))
         kill_child(&locker);
 }
 

@@ -11,7 +11,7 @@
 #include <xcb/screensaver.h>
 
 #include "config.h"
-#include "xcb_util.h"
+#include "xcb_utils.h"
 
 #define LOGIND_SERVICE "org.freedesktop.login1"
 #define LOGIND_PATH    "/org/freedesktop/login1"
@@ -287,7 +287,7 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
     GVariant *result = NULL;
     GError *error = NULL;
     GUnixFDList *fd_list;
-    gint32 fd_index = -1;
+    gint32 fd_index = 0;
     
     result = g_dbus_proxy_call_with_unix_fd_list_finish(logind_manager,
                                                              &fd_list,

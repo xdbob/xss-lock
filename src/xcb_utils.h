@@ -1,5 +1,5 @@
-#ifndef XCB_UTIL_H
-#define XCB_UTIL_H
+#ifndef XCB_UTILS_H
+#define XCB_UTILS_H
 
 #include <glib.h>
 #include <xcb/xcb.h>
@@ -20,4 +20,4 @@ guint xcb_event_add(xcb_connection_t *connection, XcbEventFunc function, gpointe
 
 G_END_DECLS
 
-#endif /* XCB_UTIL_H */
+#endif /* XCB_UTILS_H */

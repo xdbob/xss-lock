@@ -184,11 +184,12 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
             break;
         case XCB_SCREENSAVER_STATE_OFF:
             kill_child(&notifier);
-            if (xss_event->forced)
+            if (xss_event->forced) {
                 if (sleeping)
                     sleeping = FALSE;
                 else
                     kill_child(&locker);
+            }
             break;
         case XCB_SCREENSAVER_STATE_CYCLE:
             start_child(&locker);

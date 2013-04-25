@@ -13,15 +13,15 @@ use external locker as X screen saver
 Synopsis
 ========
 
-| xss-lock [-n *notify_cmd*] [--ignore-sleep] [-v|-q] ... [--] *lock_cmd* [*arg*] ...
+| xss-lock [-n *notify_cmd*] [--ignore-sleep] [-v|-q] [--] *locker* [*arg*] ...
 | xss-lock --help|--version
 
 Description
 ===========
 
 **xss-lock** hooks up your favorite locker to the MIT screen saver extension
-for X and also to systemd's login manager. The *lock_cmd* is executed in
-response to events from these two sources:
+for X and also to systemd's login manager. The locker is executed in response
+to events from these two sources:
 
 - X signals when screen saver activation is forced or after a period of user
   inactivity (as set with ``xset s TIMEOUT``). In the latter case, the notifier
@@ -38,14 +38,14 @@ Options
 =======
 
 -n cmd, --notifier=cmd
-                Run *cmd* when the screen saver activates due to user
+                Run *cmd* when the screen saver activates because of user
                 inactivity. The notifier is killed when X signals user activity
                 or when the locker is started. The locker is started after the
                 first screen saver cycle, as set with ``xset s TIMEOUT CYCLE``.
 
                 This can be used to run a countdown or (on laptops) dim the
                 screen before locking. For an example, see the script
-                */usr/share/doc/xss-lock/dim-screen.sh*.
+                *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/dim-screen.sh*.
 
 --ignore-sleep  Do not lock on suspend/hibernate.
 
@@ -56,6 +56,20 @@ Options
 -h, --help      Print help message and exit.
 
 --version       Print version number and exit.
+
+Examples
+========
+
+- Run **xlock** after ten minutes of inactivity::
+
+    xset 600
+    xss-lock xlock
+
+- Dim the screen after four minutes of inactivity, lock the screen one minute
+  later using **i3lock**::
+
+    xset 240 60
+    xss-lock -n dim-screen.sh -- i3lock -n
 
 See also
 ========

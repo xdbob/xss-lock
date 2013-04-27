@@ -1,4 +1,4 @@
 #define APP_NAME "@PROJECT_NAME@"
-#define VERSION "@VERSION@"
+#define VERSION "@PROJECT_VERSION@"
 
 #cmakedefine01 XCB_POLL_FOR_QUEUED_EVENT

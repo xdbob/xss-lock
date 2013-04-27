@@ -65,8 +65,8 @@ Examples
     xset 600
     xss-lock -- xlock +resetsaver
 
-  Without ``+resetsaver``, **xlock** resets the X screen saver during startup,
-  thus asking **xss-lock** to immediately kill **xlock** again.
+  Without ``+resetsaver``, **xlock** forces an X screen saver reset during
+  startup, thereby telling **xss-lock** to immediately kill **xlock** again.
 
 - Dim the screen after four minutes of inactivity, lock the screen one minute
   later using **i3lock**::

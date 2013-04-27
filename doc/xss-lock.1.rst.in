@@ -63,7 +63,10 @@ Examples
 - Run **xlock** after ten minutes of inactivity::
 
     xset 600
-    xss-lock xlock
+    xss-lock -- xlock +resetsaver
+
+  Without ``+resetsaver``, **xlock** resets the X screen saver during startup,
+  thus asking **xss-lock** to immediately kill **xlock** again.
 
 - Dim the screen after four minutes of inactivity, lock the screen one minute
   later using **i3lock**::

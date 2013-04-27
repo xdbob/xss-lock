@@ -57,6 +57,23 @@ Options
 
 --version       Print version number and exit.
 
+Signals
+=======
+
+SIGHUP
+    Upon receiving this signal, **xss-lock** will reset the screen saver, but
+    only if the screen is not currently locked (unlike ``xset s reset``).
+
+    This can be used in MPlayer's configuration as a workaround for MPlayer's
+    failure to restart the screensaver timer when playback is paused::
+
+        heartbeat-cmd="killall -HUP xss-lock"
+        stop-xscreensaver=false
+
+SIGINT/SIGTERM
+    Upon receiving this signal, **xss-lock** exits after killing any running
+    notifier or locker.
+
 Examples
 ========
 
@@ -65,7 +82,7 @@ Examples
     xset 600
     xss-lock -- xlock +resetsaver
 
-  Without ``+resetsaver``, **xlock** forces an X screen saver reset during
+  Without ``+resetsaver``, **xlock** forces a screen saver reset during
   startup, thereby telling **xss-lock** to immediately kill **xlock** again.
 
 - Dim the screen after four minutes of inactivity, lock the screen one minute

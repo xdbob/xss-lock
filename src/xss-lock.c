@@ -397,7 +397,7 @@ parse_options(int argc, char *argv[], GError **error)
     GOptionContext *opt_context;
     gboolean success;
 
-    opt_context = g_option_context_new("- use external locker as X screensaver");
+    opt_context = g_option_context_new("- use external locker as X screen saver");
     g_option_context_set_summary(opt_context,
                                  "TODO");
     g_option_context_add_main_entries(opt_context, opt_entries, NULL);

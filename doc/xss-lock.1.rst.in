@@ -65,7 +65,7 @@ SIGHUP
     only if the screen is not currently locked (unlike ``xset s reset``).
 
     This can be used in MPlayer's configuration as a workaround for MPlayer's
-    failure to restart the screensaver timer when playback is paused::
+    failure to restart the screen saver timer when playback is paused::
 
         heartbeat-cmd="killall -HUP xss-lock"
         stop-xscreensaver=false

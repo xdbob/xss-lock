@@ -1,3 +1,7 @@
+/* Copyright (c) 2013 Raymond Wagenmaker
+ *
+ * See LICENSE for the MIT license.
+ */
 #include "xcb_utils.h"
 #include <stdlib.h>
 

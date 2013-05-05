@@ -1,3 +1,7 @@
+/* Copyright (c) 2013 Raymond Wagenmaker
+ *
+ * See LICENSE for the MIT license.
+ */
 #ifndef XCB_UTILS_H
 #define XCB_UTILS_H
 

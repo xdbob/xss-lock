@@ -1,3 +1,7 @@
+/* Copyright (c) 2013 Raymond Wagenmaker
+ *
+ * See LICENSE for the MIT license.
+ */
 #include <locale.h>
 #include <stdlib.h>
 #include <signal.h>

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Example notifier script -- sets brightness to $min_brightness, then waits to
+# be killed and restores previous brightness on exit.
+
 min_brightness=0
 
 get_brightness() {

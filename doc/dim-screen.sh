@@ -19,8 +19,8 @@ set_brightness() {
     #echo $1 | sudo tee /sys/class/backlight/acpi_video0/brightness
 }
 
-trap "set_brightness $(get_brightness); [[ \$pid ]] && kill \$pid" EXIT
+trap "set_brightness $(get_brightness); kill %%" EXIT
 trap 'exit 0' TERM
-sleep 2147483647 & pid=$!
 set_brightness $min_brightness
+sleep 2147483647 &
 wait

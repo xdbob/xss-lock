@@ -39,9 +39,10 @@ Options
 
 -n cmd, --notifier=cmd
                 Run *cmd* when the screen saver activates because of user
-                inactivity. The notifier is killed when X signals user activity
-                or when the locker is started. The locker is started after the
-                first screen saver cycle, as set with ``xset s TIMEOUT CYCLE``.
+                inactivity. Shell-style quoting is supported. The notifier is
+                killed when X signals user activity or when the locker is
+                started. The locker is started after the first screen saver
+                cycle, as set with ``xset s TIMEOUT CYCLE``.
 
                 This can be used to run a countdown or (on laptops) dim the
                 screen before locking. For an example, see the script

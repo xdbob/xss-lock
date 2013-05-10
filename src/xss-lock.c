@@ -72,9 +72,9 @@ static gboolean opt_print_version = FALSE;
 
 static GOptionEntry opt_entries[] = {
     {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &locker.cmd, NULL, "LOCK_CMD [ARG...]"},
-    {"notifier", 'n', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_notifier_cmd, "notify command", "CMD"},
-    {"ignore-sleep", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_sleep, "do not lock on suspend/hibernate", NULL},
-    {"version", 0, 0, G_OPTION_ARG_NONE, &opt_print_version, "print version number and exit", NULL},
+    {"notifier", 'n', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_notifier_cmd, "Send notification using CMD", "CMD"},
+    {"ignore-sleep", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_sleep, "Do not lock on suspend/hibernate", NULL},
+    {"version", 0, 0, G_OPTION_ARG_NONE, &opt_print_version, "Print version number and exit", NULL},
     {NULL}
 };
 
@@ -398,8 +398,6 @@ parse_options(int argc, char *argv[], GError **error)
     gboolean success;
 
     opt_context = g_option_context_new("- use external locker as X screen saver");
-    g_option_context_set_summary(opt_context,
-                                 "TODO");
     g_option_context_add_main_entries(opt_context, opt_entries, NULL);
     success = g_option_context_parse(opt_context, &argc, &argv, error);
     g_option_context_free(opt_context);

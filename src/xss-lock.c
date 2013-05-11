@@ -166,8 +166,8 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
     const uint8_t type = XCB_EVENT_RESPONSE_TYPE(event);
 
     if (type == 0) {
-        xcb_generic_error_t *xcb_error = (xcb_generic_error_t *)event;
-        // TODO: print
+        xcb_generic_error_t *error = (xcb_generic_error_t *)event;
+        g_warning("X error: %s", xcb_event_get_error_label(error->error_code));
     } else if (type == *xcb_screensaver_notify) {
         xcb_screensaver_notify_event_t *xss_event =
             (xcb_screensaver_notify_event_t *)event;

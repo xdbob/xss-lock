@@ -1,0 +1,9 @@
+0.1.1
+-----
+
+* Warning message for X errors.
+
+* Allow building with glib>=2.30 (exit status of notifier/locker is not
+  checked for <2.34).
+
+* Typo fixes and other small improvements to documentation.

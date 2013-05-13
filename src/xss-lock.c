@@ -162,7 +162,6 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
             if (xss_event->kind == XCB_SCREENSAVER_KIND_INTERNAL) {
                 // deactivate internal, start external saver (i.e., me)
                 // TODO:
-                // - make this optional
                 // - try to see it in action
                 // - figure out if it also generates an OFF event (to be ignored)
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
@@ -220,12 +219,14 @@ kill_child(Child *child)
 static void
 child_watch_cb(GPid pid, gint status, Child *child)
 {
+#if GLIB_CHECK_VERSION(2, 34, 0)
     GError *error = NULL;
 
-    if (!g_spawn_check_exit_status(status, &error)) { // TODO: replace by UNIX-specific functions, otherwise this requires glib>=2.34 vs. 2.30 for g_unix_signal_add
+    if (!g_spawn_check_exit_status(status, &error)) {
         g_message("%s exited abnormally: %s", child->name, error->message);
         g_error_free(error);
     }
+#endif
     child->pid = 0;
     g_spawn_close_pid(pid);
 }

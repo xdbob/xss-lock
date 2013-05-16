@@ -146,7 +146,7 @@ unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
 
 static gboolean
 screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
-                     const int *xcb_screensaver_notify)
+                     const int * const xcb_screensaver_notify)
 {
     const uint8_t type = XCB_EVENT_RESPONSE_TYPE(event);
 
@@ -281,11 +281,11 @@ logind_manager_call_inhibit_cb(GObject *source_object, GAsyncResult *res,
     gint32 fd_index = 0;
     
     result = g_dbus_proxy_call_with_unix_fd_list_finish(logind_manager,
-                                                             &fd_list,
-                                                             res, &error);
+                                                        &fd_list, res, &error);
     if (!result) {
         g_warning("Error taking sleep inhibitor lock: %s", error->message);
         g_error_free(error);
+        return;
     }
 
     g_variant_get(result, "(h)", &fd_index);

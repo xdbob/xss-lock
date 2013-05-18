@@ -255,12 +255,10 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     g_dbus_proxy_call(logind_manager, "GetSessionByPID",
                       g_variant_new("(u)", getpid()), G_DBUS_CALL_FLAGS_NONE,
                       -1, NULL, logind_manager_call_get_session_cb, NULL);
-    if (!opt_ignore_sleep) {
-        logind_manager_take_sleep_delay_lock();
-        g_signal_connect(logind_manager, "g-signal",
-                         G_CALLBACK(logind_manager_on_signal_prepare_for_sleep),
-                         NULL);
-    }
+    logind_manager_take_sleep_delay_lock();
+    g_signal_connect(logind_manager, "g-signal",
+                     G_CALLBACK(logind_manager_on_signal_prepare_for_sleep),
+                     NULL);
 }
 
 static void
@@ -320,8 +318,11 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
 
     g_variant_get(parameters, "(b)", &active);
     if (active) {
-        start_child(&locker);
         sleeping = TRUE;
+
+        if (!opt_ignore_sleep)
+            start_child(&locker);
+
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
             sleep_lock_fd = -1;

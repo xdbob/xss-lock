@@ -44,6 +44,7 @@ static void logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy, gchar 
 static void logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
 static void logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
 static void logind_session_on_signal_lock(GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data);
+static void logind_session_set_idle_hint(gboolean idle);
 
 static gboolean parse_options(int argc, char *argv[], GError **error);
 static gboolean parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
@@ -165,13 +166,17 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
                 // - try to see it in action
                 // - figure out if it also generates an OFF event (to be ignored)
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
-            } else if (!notifier.cmd || xss_event->forced)
+            } else if (!notifier.cmd || xss_event->forced) {
                 start_child(&locker);
-            else if (!locker.pid)
+                logind_session_set_idle_hint(TRUE);
+            } else if (!locker.pid)
                 start_child(&notifier);
+            else
+                logind_session_set_idle_hint(TRUE);
             break;
         case XCB_SCREENSAVER_STATE_OFF:
             kill_child(&notifier);
+            logind_session_set_idle_hint(FALSE);
             if (xss_event->forced) {
                 if (sleeping)
                     sleeping = FALSE;
@@ -181,6 +186,8 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
             break;
         case XCB_SCREENSAVER_STATE_CYCLE:
             start_child(&locker);
+            if (notifier.cmd)
+                logind_session_set_idle_hint(TRUE);
             break;
         }
     }
@@ -375,6 +382,15 @@ logind_session_on_signal_lock(GDBusProxy *proxy,
         start_child(&locker);
     else if (!g_strcmp0(signal_name, "Unlock"))
         kill_child(&locker);
+}
+
+static void
+logind_session_set_idle_hint(gboolean idle)
+{
+    if (logind_session)
+        g_dbus_proxy_call(logind_session, "SetIdleHint",
+                          g_variant_new("(b)", idle), G_DBUS_CALL_FLAGS_NONE,
+                          -1, NULL, NULL, NULL);
 }
 
 static gboolean

@@ -1,7 +1,7 @@
 0.1.1
 -----
 
-* Warning message for X errors.
+* Warning message for additional X errors that pop up in the event loop.
 
 * Allow building with glib>=2.30 (exit status of notifier/locker is not
   checked for <2.34).

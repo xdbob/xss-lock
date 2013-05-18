@@ -7,7 +7,7 @@ use external locker as X screen saver
 -------------------------------------
 
 :Author: Raymond Wagenmaker <raymondwagenmaker@gmail.com>
-:Date: April 2013
+:Date: May 2013
 :Manual section: 1
 
 Synopsis
@@ -62,14 +62,17 @@ Signals
 =======
 
 SIGHUP
-    Upon receiving this signal, **xss-lock** will reset the screen saver, but
-    only if the screen is not currently locked (unlike ``xset s reset``).
+    Upon receiving this signal, **xss-lock** resets the screen saver, but only
+    if the screen is not currently locked (unlike ``xset s reset``).
 
     This can be used in MPlayer's configuration as a workaround for MPlayer's
     failure to restart the screen saver timer when playback is paused::
 
         heartbeat-cmd="killall -HUP xss-lock"
         stop-xscreensaver=false
+
+    Note that this is ineffective with mplayer2, because its heart keeps
+    beating while it is paused.
 
 SIGINT/SIGTERM
     Upon receiving this signal, **xss-lock** exits after killing any running
@@ -86,10 +89,10 @@ Examples
   Without ``+resetsaver``, **xlock** forces a screen saver reset during
   startup, thereby telling **xss-lock** to immediately kill **xlock** again.
 
-- Dim the screen after four minutes of inactivity, lock the screen one minute
+- Dim the screen after three minutes of inactivity, lock the screen two minutes
   later using **i3lock**::
 
-    xset 240 60
+    xset 180 120
     xss-lock -n dim-screen.sh -- i3lock -n
 
 See also

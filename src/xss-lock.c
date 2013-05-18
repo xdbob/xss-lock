@@ -167,7 +167,7 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
             } else if (!notifier.cmd || xss_event->forced)
                 start_child(&locker);
-            else
+            else if (!locker.pid)
                 start_child(&notifier);
             break;
         case XCB_SCREENSAVER_STATE_OFF:

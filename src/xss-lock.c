@@ -185,9 +185,10 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
             }
             break;
         case XCB_SCREENSAVER_STATE_CYCLE:
-            start_child(&locker);
-            if (notifier.cmd)
+            if (!locker.pid)
                 logind_session_set_idle_hint(TRUE);
+
+            start_child(&locker);
             break;
         }
     }

@@ -1,3 +1,10 @@
+0.2.0
+-----
+
+* Set idle hint on logind session.
+ 
+* Fix bugs related to notifier and (--ignore-)sleep.
+
 0.1.1
 -----
 

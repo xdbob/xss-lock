@@ -147,7 +147,7 @@ unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
 
 static gboolean
 screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
-                     const int * const xcb_screensaver_notify)
+                     const int *const xcb_screensaver_notify)
 {
     const uint8_t type = XCB_EVENT_RESPONSE_TYPE(event);
 
@@ -206,8 +206,7 @@ start_child(Child *child)
     if (child->kill_first)
         kill_child(child->kill_first);
 
-    if (!g_spawn_async(NULL, child->cmd, NULL, flags, NULL, NULL,
-                       &child->pid, &error)) {
+    if (!g_spawn_async(NULL, child->cmd, NULL, flags, NULL, NULL, &child->pid, &error)) {
         g_warning("Error spawning %s: %s", child->name, error->message);
         g_error_free(error);
         return;
@@ -219,8 +218,7 @@ static void
 kill_child(Child *child)
 {
     if (child->pid && kill(child->pid, SIGTERM))
-        g_warning("Error sending SIGTERM to %s: %s",
-                  child->name, g_strerror(errno));
+        g_warning("Error sending SIGTERM to %s: %s", child->name, g_strerror(errno));
 }
 
 static void
@@ -247,8 +245,7 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
     logind_manager = g_dbus_proxy_new_for_bus_finish(res, &error);
 
     if (!logind_manager) {
-        g_warning("Error connecting to systemd login manager: %s",
-                  error->message);
+        g_warning("Error connecting to systemd login manager: %s", error->message);
         g_error_free(error);
         return;
     }
@@ -257,21 +254,20 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
                       -1, NULL, logind_manager_call_get_session_cb, NULL);
     logind_manager_take_sleep_delay_lock();
     g_signal_connect(logind_manager, "g-signal",
-                     G_CALLBACK(logind_manager_on_signal_prepare_for_sleep),
-                     NULL);
+                     G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
 }
 
 static void
 logind_manager_take_sleep_delay_lock(void)
 {
+    const gchar *const why = opt_ignore_sleep ? "Ignore wake-up" : "Lock screen first";
+
     if (sleep_lock_fd >= 0)
         return;
 
     g_dbus_proxy_call_with_unix_fd_list(logind_manager, "Inhibit",
                                         g_variant_new("(ssss)", "sleep",
-                                                      APP_NAME,
-                                                      "Lock screen first",
-                                                      "delay"),
+                                                      APP_NAME, why, "delay"),
                                         G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL,
                                         logind_manager_call_inhibit_cb, NULL);
 }
@@ -389,9 +385,8 @@ static void
 logind_session_set_idle_hint(gboolean idle)
 {
     if (logind_session)
-        g_dbus_proxy_call(logind_session, "SetIdleHint",
-                          g_variant_new("(b)", idle), G_DBUS_CALL_FLAGS_NONE,
-                          -1, NULL, NULL, NULL);
+        g_dbus_proxy_call(logind_session, "SetIdleHint", g_variant_new("(b)", idle),
+                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
 static gboolean
@@ -479,9 +474,8 @@ main(int argc, char *argv[])
  
     g_dbus_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
                              G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES, NULL,
-                             LOGIND_SERVICE, LOGIND_PATH,
-                             LOGIND_MANAGER_INTERFACE, NULL,
-                             logind_manager_proxy_new_cb, NULL);
+                             LOGIND_SERVICE, LOGIND_PATH, LOGIND_MANAGER_INTERFACE,
+                             NULL, logind_manager_proxy_new_cb, NULL);
 
     loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);

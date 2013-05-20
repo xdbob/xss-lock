@@ -153,20 +153,23 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
 
     if (type == 0) {
         xcb_generic_error_t *error = (xcb_generic_error_t *)event;
+
         g_warning("X error: %s", xcb_event_get_error_label(error->error_code));
     } else if (type == *xcb_screensaver_notify) {
         xcb_screensaver_notify_event_t *xss_event =
             (xcb_screensaver_notify_event_t *)event;
-        // check for XCB_SCREENSAVER_KIND_EXTERNAL first?
+
         switch (xss_event->state) {
         case XCB_SCREENSAVER_STATE_ON:
-            if (xss_event->kind == XCB_SCREENSAVER_KIND_INTERNAL) {
-                // deactivate internal, start external saver (i.e., me)
-                // TODO:
-                // - try to see it in action
-                // - figure out if it also generates an OFF event (to be ignored)
+            if (xss_event->kind == XCB_SCREENSAVER_KIND_INTERNAL)
+                /* According to the original protocol, this forces the external
+                 * saver (i.e., me) to be started after deactivating the
+                 * internal saver, which may be started if the server is
+                 * grabbed when the saver activates, but Xorg does not seem to
+                 * work that way; I'm leaving this in anyway.
+                 */
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
-            } else if (!notifier.cmd || xss_event->forced) {
+            else if (!notifier.cmd || xss_event->forced) {
                 start_child(&locker);
                 logind_session_set_idle_hint(TRUE);
             } else if (!locker.pid)

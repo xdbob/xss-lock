@@ -71,8 +71,8 @@ SIGHUP
         heartbeat-cmd="killall -HUP xss-lock"
         stop-xscreensaver=false
 
-    Note that this is ineffective with mplayer2, because its heart keeps
-    beating while playback is paused.
+    Note that this is ineffective with mplayer2 (and mpv), because its heart
+    keeps beating while playback is paused.
 
 SIGINT/SIGTERM
     Upon receiving this signal, **xss-lock** exits after killing any running

@@ -1,0 +1,20 @@
+diff -u old/xdg-screensaver new/xdg-screensaver
+--- old/xdg-screensaver	2013-05-21 15:08:51.152812849 +0200
++++ new/xdg-screensaver	2013-05-21 15:13:16.843096616 +0200
+@@ -825,13 +825,13 @@
+ {
+     case "$1" in
+         suspend)
+-        xset s off > /dev/null
++        screensaver_suspend_loop eval killall -HUP xss-lock '||' xset s reset > /dev/null 2>&1
+         result=$?
+         ;;
+ 
+         resume)
+-        xset s default > /dev/null
+-        result=$?
++        # Automatic resume when $screensaver_file disappears
++        result=0
+         ;;
+ 
+         activate)

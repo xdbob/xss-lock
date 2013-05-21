@@ -78,6 +78,21 @@ SIGINT/SIGTERM
     Upon receiving this signal, **xss-lock** exits after killing any running
     notifier or locker.
 
+Notes
+=====
+
+- Some applications rely on the **xdg-screensaver** script from xdg-utils,
+  which uses ``xset s off`` and ``xset s default`` to suspend and resume the
+  screen saver, respectively. The latter resets the timeout and cycle to the
+  server defaults (``xset s on`` uses a hardcoded default instead), so this
+  only works if you like (or can control) the server settings.
+  
+  To fix the resume action in this script (or a copy in *~/bin* preceding the
+  original in **$PATH**), either replace ``on`` by your preferred timeout and
+  cycle, or avoid hardcoded time values by patching the script to run a suspend
+  loop as it does for other screen savers, using
+  *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/xdg-screensaver.patch*.
+
 Examples
 ========
 

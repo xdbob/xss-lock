@@ -50,9 +50,12 @@ static gboolean parse_options(int argc, char *argv[], GError **error);
 static gboolean parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
 static gboolean reset_screensaver(xcb_connection_t *connection);
 static gboolean exit_service(GMainLoop *loop);
+static void log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
 static Child notifier = {"notifier", NULL, 0, NULL};
 static Child locker = {"locker", NULL, 0, &notifier};
+static gboolean opt_quiet = FALSE;
+static gboolean opt_verbose = FALSE;
 static gboolean opt_ignore_sleep = FALSE;
 static gboolean opt_print_version = FALSE;
 
@@ -60,6 +63,8 @@ static GOptionEntry opt_entries[] = {
     {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &locker.cmd, NULL, "LOCK_CMD [ARG...]"},
     {"notifier", 'n', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_notifier_cmd, "Send notification using CMD", "CMD"},
     {"ignore-sleep", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_sleep, "Do not lock on suspend/hibernate", NULL},
+    {"quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Output only fatal errors", NULL},
+    {"verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Output more messages", NULL},
     {"version", 0, 0, G_OPTION_ARG_NONE, &opt_print_version, "Print version number and exit", NULL},
     {NULL}
 };
@@ -114,8 +119,8 @@ register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
                                                         version_cookie,
                                                         &xcb_error);
     if (xcb_error = xcb_request_check(connection, set_attributes_cookie)) {
-        g_set_error(error, XCB_ERROR, 0, "Error setting screensaver attributes;"
-                                         " is another one running?");
+        g_set_error(error, XCB_ERROR, 0, "Failed to set screensaver attributes; "
+                                         "is another one running?");
         goto out;
     }
 
@@ -446,6 +451,15 @@ exit_service(GMainLoop *loop)
     return TRUE;
 }
 
+static void
+log_handler(const gchar *log_domain, GLogLevelFlags log_level,
+            const gchar *message, gpointer user_data)
+{
+    if (opt_verbose || log_level & G_LOG_FLAG_FATAL
+    || !(opt_quiet || log_level & G_LOG_LEVEL_MESSAGE)
+        g_log_default_handler(log_domain, log_level, message, user_data);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -465,6 +479,7 @@ main(int argc, char *argv[])
         }
         goto init_error;
     }
+    g_log_set_default_handler(log_handler, NULL);
 
     connection = xcb_connect(NULL, &default_screen_number);
     if (xcb_connection_has_error(connection)) {

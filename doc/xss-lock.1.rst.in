@@ -50,9 +50,9 @@ Options
 
 --ignore-sleep  Do not lock on suspend/hibernate.
 
--v, --verbose   Be verbose.
+-q, --quiet     Output only fatal errors.
 
--q, --quiet     Be quiet.
+-v, --verbose   Output more messages.
 
 -h, --help      Print help message and exit.
 

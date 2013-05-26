@@ -1,3 +1,10 @@
+0.2.1
+-----
+
+* xdg-screensaver patch + man page note.
+ 
+* New options: --quiet and --verbose.
+
 0.2.0
 -----
 

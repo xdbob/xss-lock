@@ -456,7 +456,7 @@ log_handler(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data)
 {
     if (opt_verbose || log_level & G_LOG_FLAG_FATAL
-    || !(opt_quiet || log_level & G_LOG_LEVEL_MESSAGE)
+    || !(opt_quiet || log_level & G_LOG_LEVEL_MESSAGE))
         g_log_default_handler(log_domain, log_level, message, user_data);
 }
 

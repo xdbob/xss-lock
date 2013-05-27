@@ -25,6 +25,16 @@ set_brightness() {
     #     f /sys/class/backlight/acpi_video0/brightness 0664 root users - -
 }
 
+# To get a fading effect, replace one or both occurrences of set_brightness
+# below with fade_brightness. Note that xbacklight natively supports fading.
+fade_brightness() {
+    local level
+    for level in $(eval echo {$(get_brightness)..$1}); do
+        set_brightness $level
+        sleep 0.05
+    done
+}
+
 trap 'exit 0' TERM
 trap "set_brightness $(get_brightness); kill %%" EXIT
 set_brightness $min_brightness

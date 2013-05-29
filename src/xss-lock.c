@@ -30,7 +30,7 @@ typedef struct Child {
 } Child;
 
 static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t *atom, GError **error);
-static gboolean unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
+static void unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
 static gboolean screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event, const int *xcb_screensaver_notify);
 
 static void start_child(Child *child);
@@ -142,7 +142,7 @@ out:
     return TRUE;
 }
 
-static gboolean
+static void
 unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
                        xcb_atom_t atom)
 {

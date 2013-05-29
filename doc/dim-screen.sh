@@ -1,42 +1,65 @@
 #!/bin/bash
 
-# Example notifier script -- sets brightness to $min_brightness, then waits to
-# be killed and restores previous brightness on exit.
+# Example notifier script -- lowers screen brightness, then waits to be killed
+# and restores previous brightness on exit.
 
+## CONFIGURATION ##############################################################
+
+# Brightness will be lowered to this value.
 min_brightness=0
 
-get_brightness() {
-    xbacklight -get
+# If your video driver works with xbacklight, set -time and -steps for fading
+# to $min_brightness here. Setting steps to 1 disables fading.
+fade_time=200
+fade_steps=20
 
-    # Or, for drivers without RandR backlight property support (e.g. radeon):
-    #cat /sys/class/backlight/acpi_video0/brightness
+# If you have a driver without RandR backlight property (e.g. radeon), set this
+# to use the sysfs interface and create a .conf file in /etc/tmpfiles.d/
+# containing the following line to make the sysfs file writable for group
+# "users" (change the last - to a number to set the initial brightness):
+#
+#     f /sys/class/backlight/acpi_video0/brightness 0664 root users - -
+#
+#sysfs_path=/sys/class/backlight/acpi_video0/brightness
+
+# Time to sleep (in seconds) between increments when using sysfs. If unset or
+# empty, fading is disabled.
+fade_step_time=0.05
+
+###############################################################################
+
+get_brightness() {
+    if [[ -z $sysfs_path ]]; then
+        xbacklight -get
+    else
+        cat $sysfs_path
+    fi
 }
 
 set_brightness() {
-    xbacklight -set $1
-
-    # Or, for drivers without RandR backlight property support (e.g. radeon):
-    #echo $1 > /sys/class/backlight/acpi_video0/brightness
-    #
-    # To make this work, create a .conf file in /etc/tmpfiles.d/ containing the
-    # following line to make the sysfs file writable for group 'users' (change
-    # the last - to a number to set the initial brightness):
-    #
-    #     f /sys/class/backlight/acpi_video0/brightness 0664 root users - -
+    if [[ -z $sysfs_path ]]; then
+        xbacklight -steps 1 -set $1
+    else
+        echo $1 > $sysfs_path
+    fi
 }
 
-# To get a fading effect, replace one or both occurrences of set_brightness
-# below with fade_brightness. Note that xbacklight natively supports fading.
 fade_brightness() {
-    local level
-    for level in $(eval echo {$(get_brightness)..$1}); do
-        set_brightness $level
-        sleep 0.05
-    done
+    if [[ -z $sysfs_path ]]; then
+        xbacklight -time $fade_time -steps $fade_steps -set $1
+    elif [[ -z $fade_step_time ]]; then
+        set_brightness $1
+    else
+        local level
+        for level in $(eval echo {$(get_brightness)..$1}); do
+            set_brightness $level
+            sleep $fade_step_time
+        done
+    fi
 }
 
 trap 'exit 0' TERM
 trap "set_brightness $(get_brightness); kill %%" EXIT
-set_brightness $min_brightness
+fade_brightness $min_brightness
 sleep 2147483647 &
 wait

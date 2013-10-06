@@ -16,9 +16,9 @@ fade_steps=20
 # If you have a driver without RandR backlight property (e.g. radeon), set this
 # to use the sysfs interface and create a .conf file in /etc/tmpfiles.d/
 # containing the following line to make the sysfs file writable for group
-# "users" (change the last - to a number to set the initial brightness):
+# "users":
 #
-#     f /sys/class/backlight/acpi_video0/brightness 0664 root users - -
+#     m /sys/class/backlight/acpi_video0/brightness 0664 root users - -
 #
 #sysfs_path=/sys/class/backlight/acpi_video0/brightness
 

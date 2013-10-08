@@ -34,7 +34,7 @@ if [[ -e /dev/fd/${XSS_SLEEP_LOCK_FD:--1} ]]; then
     trap kill_i3lock TERM
 
     # we have to make sure the locker does not inherit a copy of the lock fd
-    $lock_cmd {XSS_SLEEP_LOCK_FD}<&-
+    i3lock $i3lock_options {XSS_SLEEP_LOCK_FD}<&-
 
     # now close our fd (only remaining copy) to indicate we're ready to sleep
     exec {XSS_SLEEP_LOCK_FD}<&-

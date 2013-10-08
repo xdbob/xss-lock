@@ -5,6 +5,9 @@
   Two bash scripts are included to use this with existing lockers. (Bumps
   required glib version from 2.30 to 2.32.)
 
+* Type 'm' for tmpfiles.d introduced in systemd-208 is more suitable for
+  modifying sysfs brightness file permissions.
+
 0.2.2
 -----
 

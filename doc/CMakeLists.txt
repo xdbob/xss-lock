@@ -14,4 +14,5 @@ else()
 endif()
 
 install(FILES dim-screen.sh xdg-screensaver.patch
+              transfer-sleep-lock-i3lock.sh transfer-sleep-lock-generic-delay.sh
         DESTINATION share/doc/${PROJECT_NAME})

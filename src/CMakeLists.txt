@@ -1,5 +1,5 @@
 include(FindPkgConfig)
-pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.30 gio-unix-2.0)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.32 gio-unix-2.0)
 pkg_check_modules(XCB REQUIRED xcb xcb-event xcb-screensaver)
 include_directories(${GLIB2_INCLUDE_DIRS} ${XCB_INCLUDE_DIRS})
 link_directories(${GLIB2_LIBRARY_DIRS} ${XCB_LIBRARY_DIRS})

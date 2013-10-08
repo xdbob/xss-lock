@@ -7,13 +7,13 @@ use external locker as X screen saver
 -------------------------------------
 
 :Author: Raymond Wagenmaker <raymondwagenmaker@gmail.com>
-:Date: May 2013
+:Date: October 2013
 :Manual section: 1
 
 Synopsis
 ========
 
-| xss-lock [-n *notify_cmd*] [--ignore-sleep] [-v|-q] [--] *locker* [*arg*] ...
+| xss-lock [-n *notify_cmd*] [--ignore-sleep] [-l] [-v|-q] [--] *locker* [*arg*] ...
 | xss-lock --help|--version
 
 Description
@@ -47,6 +47,18 @@ Options
                 This can be used to run a countdown or (on laptops) dim the
                 screen before locking. For an example, see the script
                 *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/dim-screen.sh*.
+
+-l, --tranfer-sleep-lock
+                Allow the locker process to inherit the file descriptor that
+                represents the delay lock obtained from the login manager. The
+                corresponding index will be made available in the environment
+                variable **$XSS_SLEEP_LOCK_FD**; this will only be set if the
+                reason for locking is that the system is preparing to go to
+                sleep. The locker should close this file descriptor to indicate
+                it is ready.
+
+                Example scripts that wrap existing lockers are available as
+                *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/transfer-sleep-lock-\*.sh*.
 
 --ignore-sleep  Do not lock on suspend/hibernate.
 

@@ -3,6 +3,7 @@
  * See LICENSE for the MIT license.
  */
 #include <locale.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
@@ -26,6 +27,7 @@ typedef struct Child {
     gchar        *name;
     gchar       **cmd;
     GPid          pid;
+    gboolean      transfer_sleep_lock_fd;
     struct Child *kill_first;
 } Child;
 
@@ -33,6 +35,7 @@ static gboolean register_screensaver(xcb_connection_t *connection, xcb_screen_t 
 static void unregister_screensaver(xcb_connection_t *connection, xcb_screen_t *screen, xcb_atom_t atom);
 static gboolean screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event, const int *xcb_screensaver_notify);
 
+static void keep_sleep_lock_fd_open(gpointer user_data);
 static void start_child(Child *child);
 static void kill_child(Child *child);
 static void child_watch_cb(GPid pid, gint status, Child *child);
@@ -52,8 +55,8 @@ static gboolean reset_screensaver(xcb_connection_t *connection);
 static gboolean exit_service(GMainLoop *loop);
 static void log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
-static Child notifier = {"notifier", NULL, 0, NULL};
-static Child locker = {"locker", NULL, 0, &notifier};
+static Child notifier = {"notifier", NULL, 0, FALSE, NULL};
+static Child locker = {"locker", NULL, 0, FALSE, &notifier};
 static gboolean opt_quiet = FALSE;
 static gboolean opt_verbose = FALSE;
 static gboolean opt_ignore_sleep = FALSE;
@@ -62,6 +65,7 @@ static gboolean opt_print_version = FALSE;
 static GOptionEntry opt_entries[] = {
     {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &locker.cmd, NULL, "LOCK_CMD [ARG...]"},
     {"notifier", 'n', G_OPTION_FLAG_FILENAME, G_OPTION_ARG_CALLBACK, parse_notifier_cmd, "Send notification using CMD", "CMD"},
+    {"transfer-sleep-lock", 'l', 0, G_OPTION_ARG_NONE, &locker.transfer_sleep_lock_fd, "Pass sleep delay lock file descriptor to locker", NULL},
     {"ignore-sleep", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_sleep, "Do not lock on suspend/hibernate", NULL},
     {"quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Output only fatal errors", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Output more messages", NULL},
@@ -204,9 +208,17 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
 }
 
 static void
+keep_sleep_lock_fd_open(gpointer user_data)
+{
+    fcntl(sleep_lock_fd, F_SETFD, ~FD_CLOEXEC & fcntl(sleep_lock_fd, F_GETFD));
+}
+
+static void
 start_child(Child *child)
 {
-    const GSpawnFlags flags = G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD;
+    GSpawnFlags flags = G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD;
+    GSpawnChildSetupFunc setup = NULL;
+    gchar **env = NULL;
     GError *error = NULL;
 
     if (child->pid)
@@ -215,12 +227,24 @@ start_child(Child *child)
     if (child->kill_first)
         kill_child(child->kill_first);
 
-    if (!g_spawn_async(NULL, child->cmd, NULL, flags, NULL, NULL, &child->pid, &error)) {
+    if (sleeping && child->transfer_sleep_lock_fd) {
+        gchar *fd = g_strdup_printf("%d", sleep_lock_fd);
+        env = g_environ_setenv(g_get_environ(), "XSS_SLEEP_LOCK_FD", fd, TRUE);
+        g_free(fd);
+
+        flags |= G_SPAWN_LEAVE_DESCRIPTORS_OPEN;
+        setup = keep_sleep_lock_fd_open;
+    }
+
+    if (!g_spawn_async(NULL, child->cmd, env, flags, setup, NULL, &child->pid, &error)) {
         g_warning("Error spawning %s: %s", child->name, error->message);
         g_error_free(error);
-        return;
+        goto out;
     }
     g_child_watch_add(child->pid, (GChildWatchFunc)child_watch_cb, child);
+
+out:
+    g_strfreev(env);
 }
 
 static void

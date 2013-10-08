@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Example locker script -- demonstrates how to use the --inherit-sleep-lock-fd
+# Example locker script -- demonstrates how to use the --transfer-sleep-lock
 # option with a fixed delay to give simple lockers a little bit of time to lock
 # the screen before the system goes the sleep.
 

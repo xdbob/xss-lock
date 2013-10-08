@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Example locker script -- demonstrates how to use the --inherit-sleep-lock-fd
+# Example locker script -- demonstrates how to use the --transfer-sleep-lock
 # option with i3lock's forking mode to delay sleep until the screen is locked.
 
 ## CONFIGURATION ##############################################################

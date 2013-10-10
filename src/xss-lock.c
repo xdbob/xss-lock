@@ -538,6 +538,8 @@ init_error:
 
     if (error) {
         g_printerr("%s\n", error->message);
+        if (error->domain == G_OPTION_ERROR)
+            g_printerr("Use --help or -h to see usage information.\n");
         g_error_free(error);
         exit(EXIT_FAILURE);
     }

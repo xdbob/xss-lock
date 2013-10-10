@@ -79,7 +79,7 @@ static GDBusProxy *logind_session = NULL;
 
 static gint sleep_lock_fd = -1;
 
-static gboolean sleeping = FALSE;
+static gboolean preparing_for_sleep = FALSE;
 
 static gboolean
 register_screensaver(xcb_connection_t *connection, xcb_screen_t *screen,
@@ -189,12 +189,6 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
         case XCB_SCREENSAVER_STATE_OFF:
             kill_child(&notifier);
             logind_session_set_idle_hint(FALSE);
-            if (xss_event->forced) {
-                if (sleeping)
-                    sleeping = FALSE;
-                else
-                    kill_child(&locker);
-            }
             break;
         case XCB_SCREENSAVER_STATE_CYCLE:
             if (!locker.pid) {
@@ -227,7 +221,7 @@ start_child(Child *child)
     if (child->kill_first)
         kill_child(child->kill_first);
 
-    if (sleeping && child->transfer_sleep_lock_fd) {
+    if (preparing_for_sleep && child->transfer_sleep_lock_fd) {
         gchar *fd = g_strdup_printf("%d", sleep_lock_fd);
         env = g_environ_setenv(g_get_environ(), "XSS_SLEEP_LOCK_FD", fd, TRUE);
         g_free(fd);
@@ -282,25 +276,25 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
         g_error_free(error);
         return;
     }
+    if (!opt_ignore_sleep) {
+        g_signal_connect(logind_manager, "g-signal",
+                         G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
+        logind_manager_take_sleep_delay_lock();
+    }
     g_dbus_proxy_call(logind_manager, "GetSessionByPID",
                       g_variant_new("(u)", getpid()), G_DBUS_CALL_FLAGS_NONE,
                       -1, NULL, logind_manager_call_get_session_cb, NULL);
-    logind_manager_take_sleep_delay_lock();
-    g_signal_connect(logind_manager, "g-signal",
-                     G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
 }
 
 static void
 logind_manager_take_sleep_delay_lock(void)
 {
-    const gchar *const why = opt_ignore_sleep ? "Ignore wake-up" : "Lock screen first";
-
     if (sleep_lock_fd >= 0)
         return;
 
     g_dbus_proxy_call_with_unix_fd_list(logind_manager, "Inhibit",
-                                        g_variant_new("(ssss)", "sleep",
-                                                      APP_NAME, why, "delay"),
+                                        g_variant_new("(ssss)", "sleep", APP_NAME,
+                                                      "Lock screen first", "delay"),
                                         G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL,
                                         logind_manager_call_inhibit_cb, NULL);
 }
@@ -347,15 +341,15 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
 
     g_variant_get(parameters, "(b)", &active);
     if (active) {
-        sleeping = TRUE;
+        preparing_for_sleep = TRUE;
 
-        if (!opt_ignore_sleep)
-            start_child(&locker);
+        start_child(&locker);
 
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
             sleep_lock_fd = -1;
         }
+        preparing_for_sleep = FALSE;
     } else
         logind_manager_take_sleep_delay_lock();
 }

@@ -31,7 +31,7 @@ if [[ -e /dev/fd/${XSS_SLEEP_LOCK_FD:--1} ]]; then
         pkill -xu $EUID "$@" i3lock
     }
 
-    trap kill_i3lock TERM
+    trap kill_i3lock TERM INT
 
     # we have to make sure the locker does not inherit a copy of the lock fd
     i3lock $i3lock_options {XSS_SLEEP_LOCK_FD}<&-
@@ -43,7 +43,7 @@ if [[ -e /dev/fd/${XSS_SLEEP_LOCK_FD:--1} ]]; then
         sleep 0.5
     done
 else
-    trap 'kill %%' TERM
+    trap 'kill %%' TERM INT
     i3lock -n $i3lock_options &
     wait
 fi

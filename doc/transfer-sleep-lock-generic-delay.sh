@@ -29,7 +29,7 @@ post_lock() {
 pre_lock
 
 # kill locker if we get killed
-trap 'kill %%' TERM
+trap 'kill %%' TERM INT
 
 if [[ -e /dev/fd/${XSS_SLEEP_LOCK_FD:--1} ]]; then
     # lock fd is open, make sure the locker does not inherit a copy

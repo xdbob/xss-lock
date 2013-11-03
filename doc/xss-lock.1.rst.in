@@ -7,7 +7,7 @@ use external locker as X screen saver
 -------------------------------------
 
 :Author: Raymond Wagenmaker <raymondwagenmaker@gmail.com>
-:Date: October 2013
+:Date: November 2013
 :Manual section: 1
 
 Synopsis
@@ -29,10 +29,16 @@ to events from these two sources:
 
 - The login manager can also request that the session be locked; as a result of
   ``loginctl lock-sessions``, for example. Additionally, **xss-lock** uses the
-  inhibition logic to lock the screen before the computer goes to sleep.
+  inhibition logic to lock the screen before the system goes to sleep.
 
 **xss-lock** waits for the locker to exit -- or kills it when screen saver
 deactivation or session unlocking is forced -- so the command should not fork.
+
+Also, **xss-lock** manages the idle hint on the login session. The idle state
+of the session is directly linked to user activity as reported by X (except
+when the notifier runs before locking the screen). When all sessions are idle,
+the login manager can take action (such as suspending the system) after a
+preconfigured delay.
 
 Options
 =======
@@ -97,7 +103,7 @@ Notes
   which uses ``xset s off`` and ``xset s default`` to suspend and resume the
   screen saver, respectively. The latter resets the timeout and cycle to the
   server defaults (``xset s on`` uses a hardcoded default instead), so this
-  only works if you like (or can control) the server settings.
+  only works if you are happy with (or can control) the server settings.
   
   To fix the resume action in this script (or a copy in *~/bin* preceding the
   original in **$PATH**), either replace ``on`` by your preferred timeout and
@@ -111,7 +117,7 @@ Examples
 - Run **xlock** after ten minutes of inactivity::
 
     xset 600
-    xss-lock -- xlock +resetsaver
+    xss-lock xlock +resetsaver
 
   Without ``+resetsaver``, **xlock** forces a screen saver reset during
   startup, thereby telling **xss-lock** to immediately kill **xlock** again.

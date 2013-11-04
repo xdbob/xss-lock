@@ -6,4 +6,4 @@ install(FILES NEWS DESTINATION share/doc/${PROJECT_NAME})
 
 add_subdirectory(src)
 add_subdirectory(doc)
-add_subdirectory(completions)
+add_subdirectory(completion)

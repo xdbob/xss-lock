@@ -5,10 +5,24 @@
   Two bash scripts are included to use this with existing lockers. (Bumps
   required glib version from 2.30 to 2.32.)
 
+* Don't kill locker on forced ScreenSaverOff event. This resulted in killing
+  the locker upon returning to the VT running X after switching to another VT.
+  Since there is no reliable way to detect VT-switching, this is necessary to
+  keep things secure without enabling DontVTSwitch in xorg.conf.
+
+  Now the only difference between `xset s reset` and sending SIGHUP to xss-lock
+  (while the locker is active) is that the former resets the idle hint and
+  (with DPMS) turns the screen back on. Killing the locker process directly is
+  now the only way to deactivate the locker programmatically. Perhaps the next
+  release will include something like `xss-lock-command` to provide more
+  fine-grained control over a running xss-lock instance.
+
 * Type 'm' for tmpfiles.d introduced in systemd-208 is more suitable for
   modifying sysfs brightness file permissions.
 
 * Add zsh and bash completion.
+
+* Update man page.
 
 0.2.2
 -----

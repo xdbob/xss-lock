@@ -89,8 +89,9 @@ SIGHUP
         heartbeat-cmd="killall -HUP xss-lock"
         stop-xscreensaver=false
 
-    Note that this is ineffective with mplayer2 (and mpv), because its heart
-    keeps beating while playback is paused.
+    .. note::
+       This is ineffective with mplayer2 (and mpv), because its heart
+       keeps beating while playback is paused.
 
 SIGINT/SIGTERM
     Upon receiving this signal, **xss-lock** exits after killing any running
@@ -127,6 +128,10 @@ Examples
 
     xset 180 120
     xss-lock -n dim-screen.sh -- i3lock -n
+
+  .. note::
+     A script is provided to use **i3lock**'s forking mode with the
+     ``--tranfer-sleep-lock`` option (see above).
 
 See also
 ========

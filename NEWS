@@ -8,6 +8,8 @@
 * Type 'm' for tmpfiles.d introduced in systemd-208 is more suitable for
   modifying sysfs brightness file permissions.
 
+* Add zsh and bash completion.
+
 0.2.2
 -----
 

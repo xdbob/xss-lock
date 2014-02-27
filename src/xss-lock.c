@@ -512,8 +512,8 @@ main(int argc, char *argv[])
 
     loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);
-    g_unix_signal_add(SIGINT, (GSourceFunc)exit_service, loop);
-    g_unix_signal_add(SIGHUP, (GSourceFunc)reset_screensaver, connection);
+    g_unix_signal_add(SIGINT,  (GSourceFunc)exit_service, loop);
+    g_unix_signal_add(SIGHUP,  (GSourceFunc)exit_service, loop);
 
     default_screen = xcb_get_screen(connection, default_screen_number);
     if (!register_screensaver(connection, default_screen, &atom, &error))

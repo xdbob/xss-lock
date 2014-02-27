@@ -14,6 +14,7 @@ G_BEGIN_DECLS
 
 #define XCB_SCREENSAVER_PROPERTY_NAME "_MIT_SCREEN_SAVER_ID"
 
+#if XCB_SCREENSAVER_NOTIFY_EVENT_T_BROKEN
 #define xcb_screensaver_notify_event_t xcb_screensaver_notify_event_t_fixed
 typedef struct xcb_screensaver_notify_event_t_fixed {
     uint8_t         response_type; /**<  */
@@ -26,6 +27,7 @@ typedef struct xcb_screensaver_notify_event_t_fixed {
     uint8_t         forced; /**<  */
     uint8_t         pad1[14]; /**<  */
 } xcb_screensaver_notify_event_t_fixed;
+#endif
 
 GQuark xcb_error_quark(void) G_GNUC_CONST;
 

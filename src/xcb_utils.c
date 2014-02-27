@@ -56,7 +56,7 @@ xcb_enqueue_events(XcbEventSource *xcb_event_source,
 {
     xcb_generic_event_t *event;
 
-    while (event = (*poll)(xcb_event_source->connection))
+    while (event = poll(xcb_event_source->connection))
         g_queue_push_tail(xcb_event_source->queue, event);
 }
 

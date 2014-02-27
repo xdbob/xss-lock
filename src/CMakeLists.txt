@@ -8,6 +8,12 @@ if(XCB_xcb_VERSION VERSION_LESS 1.8)
     set(XCB_POLL_FOR_QUEUED_EVENT 0)
 else()
     set(XCB_POLL_FOR_QUEUED_EVENT 1)
+
+    if(XCB_xcb_VERSION VERSION_LESS 1.10)
+        set(XCB_SCREENSAVER_NOTIFY_EVENT_T_BROKEN 1)
+    else()
+        set(XCB_SCREENSAVER_NOTIFY_EVENT_T_BROKEN 0)
+    endif()
 endif()
 
 configure_file(config.h.in config.h)

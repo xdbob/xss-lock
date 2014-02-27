@@ -90,8 +90,8 @@ SIGHUP
         stop-xscreensaver=false
 
     .. note::
-       This is ineffective with mplayer2 (and mpv), because its heart
-       keeps beating while playback is paused.
+       This is ineffective with mplayer2 (and mpv), because its heart keeps
+       beating while playback is paused.
 
 SIGINT/SIGTERM
     Upon receiving this signal, **xss-lock** exits after killing any running

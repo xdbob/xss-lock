@@ -1,4 +1,4 @@
-/* Copyright (c) 2013 Raymond Wagenmaker
+/* Copyright (c) 2013-2014 Raymond Wagenmaker
  *
  * See LICENSE for the MIT license.
  */
@@ -30,8 +30,6 @@ typedef struct xcb_screensaver_notify_event_t_fixed {
 #endif
 
 GQuark xcb_error_quark(void) G_GNUC_CONST;
-
-xcb_screen_t *xcb_get_screen(xcb_connection_t *connection, int screen_number);
 
 typedef gboolean (*XcbEventFunc)(xcb_connection_t *connection, xcb_generic_event_t *event, gpointer user_data);
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013 Raymond Wagenmaker
+/* Copyright (c) 2013-2014 Raymond Wagenmaker
  *
  * See LICENSE for the MIT license.
  */
@@ -12,6 +12,7 @@
 #include <gio/gio.h>
 #include <gio/gunixfdlist.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
 #include <xcb/xcb_event.h>
 #include <xcb/screensaver.h>
 
@@ -515,7 +516,7 @@ main(int argc, char *argv[])
     g_unix_signal_add(SIGINT,  (GSourceFunc)exit_service, loop);
     g_unix_signal_add(SIGHUP,  (GSourceFunc)exit_service, loop);
 
-    default_screen = xcb_get_screen(connection, default_screen_number);
+    default_screen = xcb_aux_get_screen(connection, default_screen_number);
     if (!register_screensaver(connection, default_screen, &atom, &error))
         goto init_error;
 

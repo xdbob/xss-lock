@@ -36,20 +36,6 @@ xcb_error_quark(void)
     return g_quark_from_static_string("xcb-error-quark");
 }
 
-xcb_screen_t *
-xcb_get_screen(xcb_connection_t *connection, int screen_number)
-{
-    const xcb_setup_t *setup = xcb_get_setup(connection);
-    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
-
-    g_return_val_if_fail(screen_number < xcb_setup_roots_length(setup), NULL);
-
-    while (screen_number--)
-        xcb_screen_next(&iter);
-
-    return iter.data;
-}
-
 static void
 xcb_enqueue_events(XcbEventSource *xcb_event_source,
                    xcb_generic_event_t *(*poll)(xcb_connection_t *))

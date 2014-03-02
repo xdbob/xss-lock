@@ -1,12 +1,9 @@
-/* Copyright (c) 2013 Raymond Wagenmaker
+/* Copyright (c) 2013-2014 Raymond Wagenmaker
  *
  * See LICENSE for the MIT license.
  */
 #include "xcb_utils.h"
 #include <stdlib.h>
-
-// TODO:
-// - handle xcb_connection_has_error?
 
 typedef struct XcbEventSource {
     GSource source;
@@ -70,6 +67,9 @@ xcb_event_check(GSource *source)
 {
     XcbEventSource *xcb_event_source = (XcbEventSource *)source;
 
+    if (xcb_connection_has_error(xcb_event_source->connection))
+        return TRUE;
+
     xcb_enqueue_events(xcb_event_source, xcb_poll_for_event);
     return !g_queue_is_empty(xcb_event_source->queue);
 }
@@ -86,7 +86,10 @@ xcb_event_dispatch(GSource *source, GSourceFunc callback, gpointer user_data)
         g_warning("XcbEvent source dispatched without a callback");
         return FALSE;
     }
-
+    if (xcb_connection_has_error(xcb_event_source->connection)) {
+        xcb_event_callback(xcb_event_source->connection, NULL, user_data);
+        return FALSE;
+    }
     while (again && (event = g_queue_pop_head(xcb_event_source->queue))) {
         again = xcb_event_callback(xcb_event_source->connection, event, user_data);
         free(event);

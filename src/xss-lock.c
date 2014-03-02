@@ -156,13 +156,17 @@ static gboolean
 screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
                      const int *const xcb_screensaver_notify)
 {
-    const uint8_t type = XCB_EVENT_RESPONSE_TYPE(event);
-
-    if (type == 0) {
+    uint8_t event_type;
+    
+    if (!event)
+        g_critical("X connection lost; exiting.");
+    
+    event_type = XCB_EVENT_RESPONSE_TYPE(event);
+    if (event_type == 0) {
         xcb_generic_error_t *error = (xcb_generic_error_t *)event;
 
         g_warning("X error: %s", xcb_event_get_error_label(error->error_code));
-    } else if (type == *xcb_screensaver_notify) {
+    } else if (event_type == *xcb_screensaver_notify) {
         xcb_screensaver_notify_event_t *xss_event =
             (xcb_screensaver_notify_event_t *)event;
 
@@ -495,6 +499,7 @@ main(int argc, char *argv[])
         goto init_error;
     }
     g_log_set_default_handler(log_handler, NULL);
+    g_log_set_fatal_mask(NULL, G_LOG_LEVEL_CRITICAL);
 
     connection = xcb_connect(NULL, &default_screen_number);
     if (xcb_connection_has_error(connection)) {

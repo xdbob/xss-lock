@@ -62,6 +62,7 @@ static gboolean opt_quiet = FALSE;
 static gboolean opt_verbose = FALSE;
 static gboolean opt_ignore_sleep = FALSE;
 static gboolean opt_print_version = FALSE;
+static gchar *opt_session = NULL;
 
 static GOptionEntry opt_entries[] = {
     {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &locker.cmd, NULL, "LOCK_CMD [ARG...]"},
@@ -71,6 +72,7 @@ static GOptionEntry opt_entries[] = {
     {"quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Output only fatal errors", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Output more messages", NULL},
     {"version", 0, 0, G_OPTION_ARG_NONE, &opt_print_version, "Print version number and exit", NULL},
+    {"session", 's', 0, G_OPTION_ARG_STRING, &opt_session, "Use ID instead of the current session", "ID"},
     {NULL}
 };
 
@@ -283,8 +285,18 @@ logind_manager_proxy_new_cb(GObject *source_object, GAsyncResult *res,
                          G_CALLBACK(logind_manager_on_signal_prepare_for_sleep), NULL);
         logind_manager_take_sleep_delay_lock();
     }
-    g_dbus_proxy_call(logind_manager, "GetSessionByPID",
-                      g_variant_new("(u)", getpid()), G_DBUS_CALL_FLAGS_NONE,
+
+    GVariant *data;
+    gchar *name;
+    if (!user_data) {
+        data = g_variant_new("(u)", getpid());
+        name = "GetSessionByPID";
+    } else {
+        data = g_variant_new("(s)", user_data);
+        name = "GetSession";
+    }
+
+    g_dbus_proxy_call(logind_manager, name, data, G_DBUS_CALL_FLAGS_NONE,
                       -1, NULL, logind_manager_call_get_session_cb, NULL);
 }
 
@@ -366,7 +378,7 @@ logind_manager_call_get_session_cb(GObject *source_object, GAsyncResult *res,
 
     result = g_dbus_proxy_call_finish(logind_manager, res, &error);
     if (!result) {
-        g_warning("Error getting current session: %s", error->message);
+        g_warning("Error getting session: %s", error->message);
         g_error_free(error);
         return;
     }
@@ -514,7 +526,7 @@ main(int argc, char *argv[])
     g_dbus_proxy_new_for_bus(G_BUS_TYPE_SYSTEM,
                              G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES, NULL,
                              LOGIND_SERVICE, LOGIND_PATH, LOGIND_MANAGER_INTERFACE,
-                             NULL, logind_manager_proxy_new_cb, NULL);
+                             NULL, logind_manager_proxy_new_cb, opt_session);
 
     loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGTERM, (GSourceFunc)exit_service, loop);

@@ -7,13 +7,13 @@ use external locker as X screen saver
 -------------------------------------
 
 :Author: Raymond Wagenmaker <raymondwagenmaker@gmail.com>
-:Date: November 2013
+:Date: May 2018
 :Manual section: 1
 
 Synopsis
 ========
 
-| xss-lock [-n *notify_cmd*] [--ignore-sleep] [-l] [-v|-q] [--] *locker* [*arg*] ...
+| xss-lock [-n *notify_cmd*] [-s *session ID*] [--ignore-sleep] [-l] [-v|-q] [--] *locker* [*arg*] ...
 | xss-lock --help|--version
 
 Description
@@ -65,6 +65,11 @@ Options
 
                 Example scripts that wrap existing lockers are available as
                 *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/transfer-sleep-lock-\*.sh*.
+
+-s, --session=ID
+                Use the session **ID** instead of the current session.
+
+                Example: *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/xss-lock.service*.
 
 --ignore-sleep  Do not lock on suspend/hibernate.
 
@@ -136,5 +141,6 @@ Examples
 See also
 ========
 
+**loginctl**\(1),
 **xset**\(1),
 **systemd-logind.service**\(8)

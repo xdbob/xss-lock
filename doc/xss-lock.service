@@ -1,0 +1,10 @@
+[Unit]
+Description=Auto lock
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/xss-lock -l -s ${GRAPHICAL_SESSION_ID} -- i3lock
+
+[Install]
+WantedBy=graphical-session.target

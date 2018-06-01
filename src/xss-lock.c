@@ -49,6 +49,7 @@ static void logind_manager_call_get_session_cb(GObject *source_object, GAsyncRes
 static void logind_session_proxy_new_cb(GObject *source_object, GAsyncResult *res, gpointer user_data);
 static void logind_session_on_signal_lock(GDBusProxy *proxy, gchar *sender_name, gchar *signal_name, GVariant *parameters, gpointer user_data);
 static void logind_session_set_idle_hint(gboolean idle);
+static void logind_session_set_locked_hint(gboolean locked);
 
 static gboolean parse_options(int argc, char *argv[], GError **error);
 static gboolean parse_notifier_cmd(const gchar *option_name, const gchar *value, gpointer data, GError **error);
@@ -184,6 +185,7 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
                 xcb_force_screen_saver(connection, XCB_SCREEN_SAVER_ACTIVE);
             else if (!notifier.cmd || xss_event->forced) {
                 start_child(&locker);
+                logind_session_set_locked_hint(TRUE);
                 logind_session_set_idle_hint(TRUE);
             } else if (!locker.pid)
                 start_child(&notifier);
@@ -198,6 +200,7 @@ screensaver_event_cb(xcb_connection_t *connection, xcb_generic_event_t *event,
             if (!locker.pid) {
                 logind_session_set_idle_hint(TRUE);
                 start_child(&locker);
+                logind_session_set_locked_hint(TRUE);
             }
             break;
         }
@@ -265,6 +268,7 @@ child_watch_cb(GPid pid, gint status, Child *child)
 #endif
     child->pid = 0;
     g_spawn_close_pid(pid);
+    if (child == &locker) logind_session_set_locked_hint(FALSE);
 }
 
 static void
@@ -358,6 +362,7 @@ logind_manager_on_signal_prepare_for_sleep(GDBusProxy *proxy,
         preparing_for_sleep = TRUE;
 
         start_child(&locker);
+        logind_session_set_locked_hint(TRUE);
 
         if (sleep_lock_fd >= 0) {
             close(sleep_lock_fd);
@@ -416,10 +421,21 @@ logind_session_on_signal_lock(GDBusProxy *proxy,
                               GVariant   *parameters,
                               gpointer    user_data)
 {
-    if (!g_strcmp0(signal_name, "Lock"))
+    if (!g_strcmp0(signal_name, "Lock")) {
         start_child(&locker);
+        logind_session_set_locked_hint(TRUE);
+    }
     else if (!g_strcmp0(signal_name, "Unlock"))
         kill_child(&locker);
+}
+
+static void
+logind_session_set_locked_hint(gboolean locked)
+{
+    if (logind_session)
+        g_dbus_proxy_call(logind_session, "SetLockedHint",
+                          g_variant_new("(b)", locked),
+                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
 static void

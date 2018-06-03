@@ -2,6 +2,7 @@
  *
  * See LICENSE for the MIT license.
  */
+#include <assert.h>
 #include <locale.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -432,18 +433,18 @@ logind_session_on_signal_lock(GDBusProxy *proxy,
 static void
 logind_session_set_locked_hint(gboolean locked)
 {
-    if (logind_session)
-        g_dbus_proxy_call(logind_session, "SetLockedHint",
-                          g_variant_new("(b)", locked),
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+     assert(logind_session);
+     g_dbus_proxy_call(logind_session, "SetLockedHint",
+                       g_variant_new("(b)", locked),
+                       G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
 static void
 logind_session_set_idle_hint(gboolean idle)
 {
-    if (logind_session)
-        g_dbus_proxy_call(logind_session, "SetIdleHint", g_variant_new("(b)", idle),
-                          G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+    assert(logind_session);
+    g_dbus_proxy_call(logind_session, "SetIdleHint", g_variant_new("(b)", idle),
+                      G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 }
 
 static gboolean

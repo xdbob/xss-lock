@@ -1,7 +1,7 @@
 0.3.0
 -----
 
-* New option --tranfer-sleep-lock gives lockers control over the inhibit delay.
+* New option --transfer-sleep-lock gives lockers control over the inhibit delay.
   Two bash scripts are included to use this with existing lockers. (Bumps
   required glib version from 2.30 to 2.32.)
 

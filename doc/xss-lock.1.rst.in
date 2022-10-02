@@ -54,7 +54,7 @@ Options
                 screen before locking. For an example, see the script
                 *@CMAKE_INSTALL_PREFIX@/share/doc/xss-lock/dim-screen.sh*.
 
--l, --tranfer-sleep-lock
+-l, --transfer-sleep-lock
                 Allow the locker process to inherit the file descriptor that
                 represents the delay lock obtained from the login manager. The
                 corresponding index will be made available in the environment
@@ -136,7 +136,7 @@ Examples
 
   .. note::
      A script is provided to use **i3lock**'s forking mode with the
-     ``--tranfer-sleep-lock`` option (see above).
+     ``--transfer-sleep-lock`` option (see above).
 
 See also
 ========
